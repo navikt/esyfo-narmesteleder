@@ -5,7 +5,10 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.micrometer.prometheusmetrics.PrometheusConfig
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
@@ -39,6 +42,7 @@ import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DIALOGPORTEN
+import no.nav.syfo.narmestelederrelasjon.infrastructure.insertRelation
 import no.nav.syfo.platform.upstream.UpstreamError
 import no.nav.syfo.platform.upstream.UpstreamFailure
 import no.nav.syfo.platform.upstream.UpstreamFailureStage
@@ -46,12 +50,15 @@ import org.jetbrains.exposed.v1.core.DatabaseConfig
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
+import org.jetbrains.exposed.v1.jdbc.deleteAll
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import java.io.File
 import java.sql.Connection
 import java.time.Instant
+import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 import java.util.concurrent.Executors
@@ -468,27 +475,116 @@ class ExposedDialogDispatchRepositoryTest :
             }
         }
 
+        fun runDialogDispatchBackfill() {
+            val sql = File("src/main/resources/db/migration/V35__backfill_dialog_dispatch.sql").readText()
+            TestDB.database.connection.use { connection ->
+                connection.createStatement().use { it.execute(sql) }
+                connection.commit()
+            }
+        }
+
+        suspend fun claimAllCreateStarted(): Map<UUID, Boolean?> = buildMap {
+            while (true) {
+                val claim = repository.claim(now, 60.seconds) ?: break
+                put(claim.id.value, repository.load(claim, now)?.createStarted)
+            }
+        }
+
+        test("backfill tracks a possibly attempted CREATE when it fulfils an open behov without a dialog") {
+            val legacy = insertNarmestelederbehov(sykmeldtFnr = "12345678905", orgnummer = "123456789")
+            insertRelation(employeeIdent = legacy.sykmeldtFnr, organizationNumber = legacy.orgnummer)
+            transaction(TestDB.exposedDatabase) { DialogDispatchTable.deleteAll() }
+            val scheduled = insertNarmestelederbehov(sykmeldtFnr = "12345678908", orgnummer = "123456789")
+            insertRelation(employeeIdent = scheduled.sykmeldtFnr, organizationNumber = scheduled.orgnummer)
+            runDialogDispatchBackfill()
+            val createStarted = claimAllCreateStarted()
+            assertSoftly {
+                listOf(legacy, scheduled).forEach {
+                    findStoredNarmestelederbehov(it.id)?.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
+                }
+                createStarted shouldBe mapOf(legacy.id to true, scheduled.id to true)
+            }
+        }
+
+        test("backfill is repeatable, fulfils only behov with an active relation and seeds only unfinished legacy work") {
+            val matching = insertNarmestelederbehov(sykmeldtFnr = "12345678901", orgnummer = "123456789", dialogId = UUID.randomUUID())
+            val attention = insertNarmestelederbehov(
+                sykmeldtFnr = "12345678906",
+                orgnummer = "123456789",
+                behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
+                dialogId = UUID.randomUUID(),
+            )
+            val revokedId = UUID.randomUUID()
+            val revoked = insertNarmestelederbehov(sykmeldtFnr = "12345678902", orgnummer = "123456789", avbruttNarmestelederId = revokedId)
+            val future = insertNarmestelederbehov(sykmeldtFnr = "12345678903", orgnummer = "123456789")
+            val otherOrg = insertNarmestelederbehov(sykmeldtFnr = "12345678904", orgnummer = "123456789")
+            val ended = insertNarmestelederbehov(sykmeldtFnr = "12345678907", orgnummer = "123456789")
+            val fulfilledWithDialog = insertNarmestelederbehov(behovStatus = BehovStatus.BEHOV_FULFILLED, dialogId = UUID.randomUUID())
+            val expiryPending = insertNarmestelederbehov(behovStatus = BehovStatus.BEHOV_EXPIRED, dialogId = UUID.randomUUID())
+            insertNarmestelederbehov(behovStatus = BehovStatus.BEHOV_EXPIRED, dialogId = UUID.randomUUID(), expiredInDialogporten = now)
+            insertNarmestelederbehov(behovStatus = BehovStatus.BEHOV_FULFILLED)
+            insertRelation(employeeIdent = matching.sykmeldtFnr, organizationNumber = matching.orgnummer)
+            insertRelation(employeeIdent = attention.sykmeldtFnr, organizationNumber = attention.orgnummer)
+            insertRelation(narmestelederId = revokedId, employeeIdent = revoked.sykmeldtFnr, organizationNumber = revoked.orgnummer)
+            insertRelation(employeeIdent = future.sykmeldtFnr, organizationNumber = future.orgnummer, activeFrom = OffsetDateTime.now().plusDays(1))
+            insertRelation(employeeIdent = otherOrg.sykmeldtFnr, organizationNumber = "999999999")
+            insertRelation(employeeIdent = ended.sykmeldtFnr, organizationNumber = ended.orgnummer, activeTo = OffsetDateTime.now().minusHours(1))
+            transaction(TestDB.exposedDatabase) { DialogDispatchTable.deleteAll() }
+            transaction(TestDB.exposedDatabase) { scheduleDialogDispatch(matching.id) }
+            val acknowledged = requireNotNull(repository.claim(now, 60.seconds))
+            repository.finish(acknowledged, DialogDispatchResult.Done, now) shouldBe true
+            val duringCutover = insertNarmestelederbehov()
+            repeat(2) { runDialogDispatchBackfill() }
+            val createStarted = claimAllCreateStarted()
+            assertSoftly {
+                listOf(matching, attention).forEach {
+                    findStoredNarmestelederbehov(it.id)?.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
+                }
+                listOf(revoked, future, otherOrg, ended).forEach {
+                    findStoredNarmestelederbehov(it.id)?.behovStatus shouldBe BehovStatus.BEHOV_CREATED
+                }
+                createStarted shouldBe mapOf(
+                    matching.id to false,
+                    attention.id to false,
+                    revoked.id to true,
+                    future.id to true,
+                    otherOrg.id to true,
+                    ended.id to true,
+                    fulfilledWithDialog.id to false,
+                    expiryPending.id to false,
+                    duringCutover.id to true,
+                )
+            }
+        }
+
         listOf(400, 422, 403, 404, 503).forEach { status ->
-            test("status $status is classified without a tight retry loop") {
+            test("status $status is classified without a tight retry loop and exports observable queue state") {
                 insertNarmestelederbehov(created = now.minusSeconds(30))
-                val outcomes = mutableListOf<DialogDispatchOutcome>()
-                var calls = 0
-                dispatcher(
-                    dialogCreation = { _, _, _ ->
-                        calls++
-                        NarmestelederbehovDialogCreationResult.Unavailable(
-                            UpstreamFailure(DIALOGPORTEN, UpstreamFailureStage.RESPONSE, status, errors = listOf(UpstreamError("failure"))),
-                        )
-                    },
-                    dispatchMetrics = { outcomes += it },
-                ).execute()
-                val parked = status in listOf(400, 422)
-                assertSoftly {
-                    calls shouldBe 1
-                    repository.claim(now, 60.seconds).shouldBeNull()
-                    repository.stats().parked shouldBe if (parked) 1L else 0L
-                    repository.stats().pending shouldBe if (parked) 0L else 1L
-                    outcomes shouldBe listOf(if (parked) DialogDispatchOutcome.PARKED else DialogDispatchOutcome.RETRY)
+                val registry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+                try {
+                    val metrics = MicrometerDialogDispatchMetrics(repository, registry, java.time.Clock.fixed(now, ZoneOffset.UTC))
+                    var calls = 0
+                    dispatcher(
+                        dialogCreation = { _, _, _ ->
+                            calls++
+                            NarmestelederbehovDialogCreationResult.Unavailable(
+                                UpstreamFailure(DIALOGPORTEN, UpstreamFailureStage.RESPONSE, status, errors = listOf(UpstreamError("failure"))),
+                            )
+                        },
+                        dispatchMetrics = metrics,
+                    ).execute()
+                    metrics.refresh()
+                    val parked = status in listOf(400, 422)
+                    val scrape = registry.scrape()
+                    assertSoftly {
+                        calls shouldBe 1
+                        repository.claim(now, 60.seconds).shouldBeNull()
+                        scrape shouldContain "syfo_narmesteleder_dialog_dispatch_parked ${if (parked) "1.0" else "0.0"}"
+                        scrape shouldContain "syfo_narmesteleder_dialog_dispatch_pending ${if (parked) "0.0" else "1.0"}"
+                        scrape shouldContain """syfo_narmesteleder_dialog_dispatch_attempts_total{outcome="${if (parked) "parked" else "retry"}"} 1.0"""
+                    }
+                } finally {
+                    registry.close()
                 }
             }
         }

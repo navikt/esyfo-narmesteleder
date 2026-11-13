@@ -16,7 +16,7 @@ private val LOCAL_CONFIG_RESOURCES = listOf(LOCAL_APPLICATION_CONF, APPLICATION_
  */
 fun applicationConfigWithEnvironment(
     environment: Map<String, String>,
-    resources: List<String> = listOf(APPLICATION_CONF),
+    resources: List<String>,
     overrides: Map<String, String> = emptyMap(),
 ): ApplicationConfig = HoconApplicationConfig(
     ConfigFactory.parseMap(overrides)

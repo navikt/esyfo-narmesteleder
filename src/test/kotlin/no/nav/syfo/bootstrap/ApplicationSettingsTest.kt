@@ -95,7 +95,6 @@ class ApplicationSettingsTest :
 private val requiredEnvironment = mapOf(
     "PUBLIC_INGRESS_URL" to "https://ingress.example",
     "FRONTEND_BASE_URL" to "https://frontend.example",
-    "DIALOGPORTEN_TASK_ENABLED" to "true",
     "ELECTOR_PATH" to "elector-path",
     "ELECTOR_SSE_URL" to "http://elector.example/sse",
     "AAREG_BASE_URL" to "https://aareg.example",

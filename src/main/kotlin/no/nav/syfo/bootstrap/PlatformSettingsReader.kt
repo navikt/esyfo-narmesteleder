@@ -74,7 +74,6 @@ internal fun ApplicationConfig.leaderElectionSettings() = LeaderElectionSettings
 )
 
 internal fun ApplicationConfig.maintenanceTaskSettings() = MaintenanceTaskSettings(
-    enabled = flag("maintenanceTask.enabled"),
     interval = duration("maintenanceTask.interval"),
 )
 

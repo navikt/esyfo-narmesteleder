@@ -2,7 +2,6 @@ package no.nav.syfo.bootstrap
 
 import io.kotest.assertions.nondeterministic.eventually
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import io.ktor.server.application.install
 import io.ktor.server.testing.testApplication
@@ -15,7 +14,6 @@ import no.nav.syfo.narmestelederbehov.application.RecordingExpiryRepository
 import no.nav.syfo.narmestelederbehov.application.SendDialogsFixture
 import no.nav.syfo.narmestelederbehov.infrastructure.SendDialogTask
 import no.nav.syfo.narmestelederbehov.infrastructure.UpdateDialogTask
-import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.DialogportenSettings
 import no.nav.syfo.narmestelederrelasjon.application.relationperson.EnrichPendingRelationPersonsUseCase
 import no.nav.syfo.narmestelederrelasjon.application.relationperson.FakeBulkPersonLookup
 import no.nav.syfo.narmestelederrelasjon.application.relationperson.InMemoryRelationPersonRepository
@@ -33,21 +31,16 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 private val clock = Clock.fixed(Instant.parse("2026-03-17T10:00:00Z"), ZoneOffset.UTC)
 
 class ConfigureBackgroundTasksTest :
     FunSpec({
-        test("a promoted pod starts every enabled task with the configured use cases") {
+        test("a promoted pod starts every task with the configured use cases") {
             val tasks = RecordingTasks()
 
-            tasks.promote(
-                dialogportenTasksEnabled = true,
-                maintenanceTaskSettings = MaintenanceTaskSettings(enabled = true, interval = 1.hours),
-                personEnrichmentTaskSettings = PersonEnrichmentTaskSettings(enabled = true, pollingInterval = 1.hours),
-            ) {
+            tasks.promote {
                 tasks.sendDialogs.queries.size shouldBe 1
                 tasks.completeDialogs.repository.fulfilledQueries.size shouldBe 1
                 tasks.expireDialogs.repository.expiryQueries shouldBe 1
@@ -55,40 +48,6 @@ class ConfigureBackgroundTasksTest :
                 tasks.expiry.calls.map { it.first } shouldBe listOf(LocalDate.parse("2026-03-01"))
                 tasks.retention.requests.map { it.first } shouldBe listOf(LocalDate.parse("2025-03-17"))
             }
-        }
-
-        test("a promoted pod starts only maintenance tasks when Dialogporten tasks are disabled") {
-            val tasks = RecordingTasks()
-
-            tasks.promote(
-                dialogportenTasksEnabled = false,
-                maintenanceTaskSettings = MaintenanceTaskSettings(enabled = true, interval = 1.hours),
-                personEnrichmentTaskSettings = PersonEnrichmentTaskSettings(enabled = true, pollingInterval = 1.hours),
-            ) {
-                tasks.expiry.calls.size shouldBe 1
-                tasks.retention.requests.size shouldBe 1
-            }
-
-            tasks.sendDialogs.queries.shouldBeEmpty()
-            tasks.completeDialogs.repository.fulfilledQueries.shouldBeEmpty()
-            tasks.relationPersons.findPendingLimits.shouldBeEmpty()
-        }
-
-        test("a promoted pod starts only Dialogporten tasks when person enrichment and maintenance are disabled") {
-            val tasks = RecordingTasks()
-
-            tasks.promote(
-                dialogportenTasksEnabled = true,
-                maintenanceTaskSettings = MaintenanceTaskSettings(enabled = false, interval = 1.hours),
-                personEnrichmentTaskSettings = PersonEnrichmentTaskSettings(enabled = false, pollingInterval = 1.hours),
-            ) {
-                tasks.sendDialogs.queries.size shouldBe 1
-                tasks.completeDialogs.repository.fulfilledQueries.size shouldBe 1
-            }
-
-            tasks.relationPersons.findPendingLimits.shouldBeEmpty()
-            tasks.expiry.calls.shouldBeEmpty()
-            tasks.retention.requests.shouldBeEmpty()
         }
     })
 
@@ -108,34 +67,19 @@ private class RecordingTasks {
         single { DeleteOldSykmeldinger(retention, clock, SykmeldingRetentionMetrics(SimpleMeterRegistry())) }
     }
 
-    fun promote(
-        dialogportenTasksEnabled: Boolean,
-        maintenanceTaskSettings: MaintenanceTaskSettings,
-        personEnrichmentTaskSettings: PersonEnrichmentTaskSettings,
-        startedTasksHaveRun: () -> Unit,
-    ) = testApplication {
+    fun promote(startedTasksHaveRun: () -> Unit) = testApplication {
         application {
             install(Koin) {
                 modules(
                     useCases,
                     tasksModule(
                         narmestelederbehovExpirySettings = NarmestelederbehovExpirySettings(daysAfterTom = 16),
-                        maintenanceTaskSettings = maintenanceTaskSettings,
-                        personEnrichmentTaskSettings = personEnrichmentTaskSettings,
+                        maintenanceTaskSettings = MaintenanceTaskSettings(interval = 1.hours),
+                        personEnrichmentTaskSettings = PersonEnrichmentTaskSettings(pollingInterval = 1.hours),
                     ),
                 )
             }
-            configureBackgroundTasks(
-                dialogportenSettings = DialogportenSettings(
-                    baseUrl = "https://altinn.example.invalid",
-                    tasksEnabled = dialogportenTasksEnabled,
-                    publicIngressUrl = "https://api.example.invalid",
-                    frontendBaseUrl = "https://frontend.example.invalid",
-                    updatePollingInterval = 5.minutes,
-                ),
-                maintenanceTaskSettings = maintenanceTaskSettings,
-                personEnrichmentTaskSettings = personEnrichmentTaskSettings,
-            )
+            configureBackgroundTasks()
             monitor.raise(LeaderChangeEvent, LeaderChange.Promoted)
         }
         startApplication()

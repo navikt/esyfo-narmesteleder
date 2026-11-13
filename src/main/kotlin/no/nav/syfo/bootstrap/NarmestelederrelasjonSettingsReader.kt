@@ -13,7 +13,6 @@ internal fun ApplicationConfig.narmestelederrelasjonSettings() = Narmestelederre
         pdlConsumerEnabled = flag("narmestelederrelasjon.pdlLeesahConsumerEnabled"),
     ),
     personEnrichmentTask = PersonEnrichmentTaskSettings(
-        enabled = flag("narmestelederrelasjon.personEnrichmentTask.enabled"),
         pollingInterval = duration("narmestelederrelasjon.personEnrichmentTask.interval"),
     ),
 )

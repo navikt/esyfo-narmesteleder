@@ -5,7 +5,6 @@ import no.nav.syfo.narmestelederbehov.NarmestelederbehovSettings
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpirySettings
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.DialogportenSettings
 import no.nav.syfo.platform.config.duration
-import no.nav.syfo.platform.config.flag
 import no.nav.syfo.platform.config.long
 import no.nav.syfo.platform.config.string
 
@@ -13,7 +12,6 @@ internal fun ApplicationConfig.narmestelederbehovSettings() = Narmestelederbehov
     expiry = NarmestelederbehovExpirySettings(daysAfterTom = long("narmestelederbehov.expiry.daysAfterTom")),
     dialogporten = DialogportenSettings(
         baseUrl = string("altinn.baseUrl"),
-        tasksEnabled = flag("narmestelederbehov.dialogporten.tasksEnabled"),
         publicIngressUrl = string("narmestelederbehov.dialogporten.publicIngressUrl"),
         frontendBaseUrl = string("narmestelederbehov.dialogporten.frontendBaseUrl"),
         updatePollingInterval = duration("narmestelederbehov.dialogporten.updatePollingInterval"),

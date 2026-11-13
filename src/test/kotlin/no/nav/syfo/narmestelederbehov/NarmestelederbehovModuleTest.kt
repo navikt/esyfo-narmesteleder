@@ -45,7 +45,6 @@ class NarmestelederbehovModuleTest :
                     expiry = NarmestelederbehovExpirySettings(daysAfterTom = 16),
                     dialogporten = DialogportenSettings(
                         baseUrl = "https://altinn.example.invalid",
-                        tasksEnabled = true,
                         publicIngressUrl = "https://api.example.invalid",
                         frontendBaseUrl = "https://frontend.example.invalid",
                         updatePollingInterval = 7.minutes,

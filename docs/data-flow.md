@@ -123,10 +123,7 @@ All except the first and third are leader-controlled. Flags:
 | Every pod, claim/lease | `employment-check-seed` loop | `SeedNarmestelederrelasjonEmploymentChecksUseCase` creates work for active relations. |
 | Every pod, claim/lease | `employment-check` loop | `CheckNarmestelederrelasjonEmploymentUseCase`, see [Revoke](#revoke-a-relation). |
 
-Flags: `DIALOGPORTEN_TASK_ENABLED` (dialog tasks), plus
-`PERSON_ENRICHMENT_TASK_ENABLED` for enrichment, which starts inside the
-Dialogporten branch; `BEHOV_MAINTENANCE_TASK_ENABLED` (expiry and retention).
-Employment checks have no flag. Claims and leases:
+Background tasks have no feature flags. Claims and leases:
 [ADR-0003](adr/ADR-0003-planlagt-bakgrunnsarbeid-bruker-claim-med-lease.md).
 
 ## Write flows

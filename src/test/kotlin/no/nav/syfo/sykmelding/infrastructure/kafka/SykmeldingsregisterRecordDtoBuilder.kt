@@ -1,23 +1,30 @@
 package no.nav.syfo.sykmelding.infrastructure.kafka
 
 import no.nav.syfo.platform.kafka.jacksonMapper
+import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.Arbeidsgiver
+import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.BrukerSvar
+import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.Event
+import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.KafkaMetadata
+import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.RiktigNarmesteLeder
+import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.Sykmelding
+import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.Sykmeldingsperiode
 import java.time.LocalDate
 import java.time.OffsetDateTime
 
 fun sykmeldingsregisterRecordDto(
     fnr: String = "01019012345",
-    arbeidsgiver: ArbeidsgiverDto? = ArbeidsgiverDto(orgnummer = "987654321"),
-    sykmeldingsperioder: List<SykmeldingsperiodeDto?> = listOf(SykmeldingsperiodeDto(tom = LocalDate.parse("2026-11-20"))),
+    arbeidsgiver: Arbeidsgiver? = Arbeidsgiver(orgnummer = "987654321"),
+    sykmeldingsperioder: List<Sykmeldingsperiode?> = listOf(Sykmeldingsperiode(tom = LocalDate.parse("2026-11-20"))),
     svar: String? = null,
     timestamp: OffsetDateTime = OffsetDateTime.parse("2026-11-02T10:15:30+01:00"),
 ) = SykmeldingsregisterRecordDto(
-    kafkaMetadata = KafkaMetadataDto(fnr = fnr),
-    event = EventDto(
+    kafkaMetadata = KafkaMetadata(fnr = fnr),
+    event = Event(
         timestamp = timestamp,
         arbeidsgiver = arbeidsgiver,
-        brukerSvar = BrukerSvarDto(riktigNarmesteLeder = svar?.let { RiktigNarmesteLederDto(svar = it) }),
+        brukerSvar = BrukerSvar(riktigNarmesteLeder = svar?.let { RiktigNarmesteLeder(svar = it) }),
     ),
-    sykmelding = SykmeldingDto(sykmeldingsperioder = sykmeldingsperioder),
+    sykmelding = Sykmelding(sykmeldingsperioder = sykmeldingsperioder),
 )
 
 fun SykmeldingsregisterRecordDto.toJson(): String = jacksonMapper().writeValueAsString(this)

@@ -9,6 +9,8 @@ import no.nav.syfo.platform.kafka.jacksonMapper
 import no.nav.syfo.sykmelding.application.SENDT_SYKMELDING_TOPIC
 import no.nav.syfo.sykmelding.application.SykmeldingsregisterMessage
 import no.nav.syfo.sykmelding.application.SykmeldingsregisterPosition
+import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.Arbeidsgiver
+import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.Sykmeldingsperiode
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import java.time.LocalDate
 import java.time.OffsetDateTime
@@ -21,10 +23,10 @@ class SykmeldingsregisterRecordParserTest :
         test("maps a sent sykmelding to a Kafka-free message with its position") {
             val message = sykmeldingsregisterRecordDto(
                 fnr = FNR,
-                arbeidsgiver = ArbeidsgiverDto(orgnummer = ORGNUMMER),
+                arbeidsgiver = Arbeidsgiver(orgnummer = ORGNUMMER),
                 sykmeldingsperioder = listOf(
-                    SykmeldingsperiodeDto(tom = LocalDate.parse("2026-11-20")),
-                    SykmeldingsperiodeDto(tom = LocalDate.parse("2026-10-31")),
+                    Sykmeldingsperiode(tom = LocalDate.parse("2026-11-20")),
+                    Sykmeldingsperiode(tom = LocalDate.parse("2026-10-31")),
                 ),
                 svar = "JA",
             )
@@ -84,7 +86,7 @@ class SykmeldingsregisterRecordParserTest :
                 ),
                 InvalidRecord(
                     "invalid orgnummer",
-                    value = sykmeldingsregisterRecordDto(arbeidsgiver = ArbeidsgiverDto(orgnummer = "12345")).toJson(),
+                    value = sykmeldingsregisterRecordDto(arbeidsgiver = Arbeidsgiver(orgnummer = "12345")).toJson(),
                     reason = "INVALID_PAYLOAD: event.arbeidsgiver.orgnummer",
                 ),
                 InvalidRecord(
@@ -94,7 +96,7 @@ class SykmeldingsregisterRecordParserTest :
                 ),
                 InvalidRecord(
                     "null periode",
-                    value = sykmeldingsregisterRecordDto(sykmeldingsperioder = listOf(SykmeldingsperiodeDto(tom = LocalDate.parse("2026-11-20")), null)).toJson(),
+                    value = sykmeldingsregisterRecordDto(sykmeldingsperioder = listOf(Sykmeldingsperiode(tom = LocalDate.parse("2026-11-20")), null)).toJson(),
                     reason = "INVALID_PAYLOAD: sykmelding.sykmeldingsperioder",
                 ),
             ) { invalid ->

@@ -122,33 +122,5 @@ spec:
   env:
     - name: JDK_JAVA_OPTIONS
       value: -XX:MaxRAMPercentage=50 -Dlogback.configurationFile=logback.xml
-    - name: PDL_BASE_URL
-      value: https://pdl-api.prod-fss-pub.nais.io/graphql
-    - name: PDL_SCOPE
-      value: prod-fss.pdl.pdl-api
-    - name: AAREG_BASE_URL
-      value: https://aareg-services.prod-fss-pub.nais.io
-    - name: AAREG_SCOPE
-      value: prod-fss.arbeidsforhold.aareg-services-nais
-    - name: ALTINN_3_BASE_URL
-      value: https://platform.altinn.no
-    - name: DINESYMELDTE_BASEURL
-      value: http://dinesykmeldte-backend
-    - name: DINESYMELDTE_SCOPE
-      value: prod-gcp.team-esyfo.dinesykmeldte-backend
-    - name: EREG_BASE_URL
-      value: https://ereg-services.prod-fss-pub.nais.io
-    - name: ALTINN_TILGANGER_BASE_URL
-      value: http://arbeidsgiver-altinn-tilganger.fager
-    - name: FRONTEND_BASE_URL
-      value: https://www.nav.no/arbeidsgiver
-    - name: PUBLIC_INGRESS_URL
-      value: https://narmesteleder-api.nav.no
-    - name: DIALOGPORTEN_UPDATE_POLLING_DELAY
-      value: "10m"
-    - name: MAINTENANCE_TASK_DELAY
-      value: "1h"
-    - name: DAYS_AFTER_TOM_TO_EXPIRE_BEHOVS
-      value: "16"
   envFrom:
     - secret: altinn-subscription-key

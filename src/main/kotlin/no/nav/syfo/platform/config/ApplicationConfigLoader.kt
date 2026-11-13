@@ -9,11 +9,25 @@ import kotlin.time.Duration
 
 const val APPLICATION_CONF = "application.conf"
 
-/** Loads [APPLICATION_CONF] and resolves its `${?ENV}` overrides against the process environment. */
-fun loadApplicationConfig(): ApplicationConfig = HoconApplicationConfig(parseConfigResources(APPLICATION_CONF).resolve())
+/** Injected by NAIS on every pod, e.g. `dev-gcp`. */
+private const val NAIS_CLUSTER_NAME = "NAIS_CLUSTER_NAME"
+
+/**
+ * Loads the config file for [cluster] over [APPLICATION_CONF] and resolves `${?ENV}` overrides against the process
+ * environment. The cluster defaults to NAIS_CLUSTER_NAME, the only variable read directly, because it selects the files.
+ */
+fun loadApplicationConfig(cluster: String? = System.getenv(NAIS_CLUSTER_NAME)): ApplicationConfig = HoconApplicationConfig(
+    parseConfigResources(configResources(cluster)).resolve(),
+)
+
+/** `application-<cluster>.conf` overrides [APPLICATION_CONF]. Without a cluster, only [APPLICATION_CONF] is loaded. */
+fun configResources(cluster: String?): List<String> = listOfNotNull(
+    cluster?.takeUnless(String::isBlank)?.let { "application-$it.conf" },
+    APPLICATION_CONF,
+)
 
 /** Parses classpath [resources], where earlier resources override later ones. Every resource must exist. */
-fun parseConfigResources(vararg resources: String): Config = resources
+fun parseConfigResources(resources: List<String>): Config = resources
     .map { ConfigFactory.parseResources(it, ConfigParseOptions.defaults().setAllowMissing(false)) }
     .reduce(Config::withFallback)
 

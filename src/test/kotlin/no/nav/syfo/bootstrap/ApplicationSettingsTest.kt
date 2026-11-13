@@ -6,6 +6,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import no.nav.syfo.platform.config.applicationConfigWithEnvironment
+import no.nav.syfo.platform.config.configResources
 import no.nav.syfo.platform.database.DatabaseSecurity
 import no.nav.syfo.platform.database.DatabaseSettings
 import no.nav.syfo.platform.kafka.KafkaSchemaRegistrySettings
@@ -21,20 +22,20 @@ class ApplicationSettingsTest :
         }
 
         test("startup names the missing setting") {
-            val failure = shouldThrow<IllegalStateException> { settingsFrom(requiredEnvironment - "PDL_BASE_URL") }
+            val failure = shouldThrow<IllegalStateException> { settingsFrom(requiredEnvironment - "NARMESTELEDER_DB_HOST") }
 
-            failure.message shouldBe "Invalid configuration: pdl.baseUrl is missing"
+            failure.message shouldBe "Invalid configuration: database.host is missing"
         }
 
         listOf(
-            Triple("DAYS_AFTER_TOM_TO_EXPIRE_BEHOVS", "sixteen", "narmestelederbehov.expiry.daysAfterTom is not a whole number"),
-            Triple("DIALOGPORTEN_UPDATE_POLLING_DELAY", "soon", "narmestelederbehov.dialogporten.updatePollingInterval is not a valid duration"),
-        ).forEach { (variable, value, problem) ->
-            test("startup reports an invalid $variable without the value") {
-                val failure = shouldThrow<IllegalStateException> { settingsFrom(requiredEnvironment + (variable to value)) }
+            Triple("narmestelederbehov.expiry.daysAfterTom", "sixteen", "is not a whole number"),
+            Triple("narmestelederbehov.dialogporten.updatePollingInterval", "soon", "is not a valid duration"),
+        ).forEach { (path, value, problem) ->
+            test("startup reports an invalid $path without the value") {
+                val failure = shouldThrow<IllegalStateException> { settingsFrom(requiredEnvironment, overrides = mapOf(path to value)) }
 
                 assertSoftly(failure.message.orEmpty()) {
-                    this shouldBe "Invalid configuration: $problem"
+                    this shouldBe "Invalid configuration: $path $problem"
                     this shouldNotContain value
                 }
             }
@@ -92,22 +93,14 @@ class ApplicationSettingsTest :
         }
     })
 
+private const val CLUSTER = "prod-gcp"
+
+// What NAIS injects in [CLUSTER]; the cluster's config file supplies the rest.
 private val requiredEnvironment = mapOf(
-    "PUBLIC_INGRESS_URL" to "https://ingress.example",
-    "FRONTEND_BASE_URL" to "https://frontend.example",
     "ELECTOR_PATH" to "elector-path",
     "ELECTOR_SSE_URL" to "http://elector.example/sse",
-    "AAREG_BASE_URL" to "https://aareg.example",
-    "AAREG_SCOPE" to "aareg-scope",
-    "ALTINN_3_BASE_URL" to "https://altinn.example",
     "PDP_SUBSCRIPTION_KEY" to "subscription-key",
-    "ALTINN_TILGANGER_BASE_URL" to "https://altinn-tilganger.example",
-    "DINESYMELDTE_BASEURL" to "https://dinesykmeldte.example",
-    "DINESYMELDTE_SCOPE" to "dinesykmeldte-scope",
-    "EREG_BASE_URL" to "https://ereg.example",
-    "PDL_BASE_URL" to "https://pdl.example",
-    "PDL_SCOPE" to "pdl-scope",
-    "NAIS_CLUSTER_NAME" to "test-cluster",
+    "NAIS_CLUSTER_NAME" to CLUSTER,
     "NAIS_TOKEN_INTROSPECTION_ENDPOINT" to "http://texas.example/introspect",
     "NAIS_TOKEN_ENDPOINT" to "http://texas.example/token",
     "NAIS_TOKEN_EXCHANGE_ENDPOINT" to "http://texas.example/exchange",
@@ -133,4 +126,6 @@ private val requiredEnvironment = mapOf(
     "KAFKA_CREDSTORE_PASSWORD" to "credstore-password",
 )
 
-private fun settingsFrom(environment: Map<String, String>) = ApplicationSettings.from(applicationConfigWithEnvironment(environment))
+private fun settingsFrom(environment: Map<String, String>, overrides: Map<String, String> = emptyMap()) = ApplicationSettings.from(
+    applicationConfigWithEnvironment(environment, configResources(CLUSTER), overrides),
+)

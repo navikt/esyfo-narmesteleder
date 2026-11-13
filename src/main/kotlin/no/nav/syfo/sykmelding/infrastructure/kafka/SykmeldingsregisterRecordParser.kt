@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.JsonMappingException
 import com.fasterxml.jackson.databind.ObjectMapper
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.sykmelding.application.SendtSykmeldingKafkaMessage
 import no.nav.syfo.sykmelding.application.SykmeldingsregisterDeadLetter
 import no.nav.syfo.sykmelding.application.SykmeldingsregisterMessage
 import no.nav.syfo.sykmelding.application.SykmeldingsregisterPosition
@@ -45,7 +44,7 @@ class SykmeldingsregisterRecordParser(
         if (value == null) return ParsedSykmeldingsregisterRecord.Accepted(SykmeldingsregisterMessage.Tombstone(sykmeldingId, position))
 
         val message = try {
-            jacksonMapper.readValue(value, SendtSykmeldingKafkaMessage::class.java)
+            jacksonMapper.readValue(value, SendtSykmeldingDto::class.java)
         } catch (e: JsonProcessingException) {
             return rejected(position, sykmeldingId, SykmeldingsregisterRejection.MALFORMED_PAYLOAD, e.fieldPath())
         } ?: return rejected(position, sykmeldingId, SykmeldingsregisterRejection.MALFORMED_PAYLOAD)
@@ -54,7 +53,7 @@ class SykmeldingsregisterRecordParser(
     }
 
     private fun validateSentSykmelding(
-        message: SendtSykmeldingKafkaMessage,
+        message: SendtSykmeldingDto,
         sykmeldingId: UUID,
         position: SykmeldingsregisterPosition,
     ): ParsedSykmeldingsregisterRecord {
@@ -65,8 +64,8 @@ class SykmeldingsregisterRecordParser(
         val arbeidsgiver = message.event.arbeidsgiver ?: return invalid("event.arbeidsgiver")
         if (!OrganizationNumber.isValid(arbeidsgiver.orgnummer)) return invalid("event.arbeidsgiver.orgnummer")
         val perioder = message.sykmelding.sykmeldingsperioder
-        if (perioder.isEmpty() || perioder.containsNull()) return invalid("sykmelding.sykmeldingsperioder")
-        val maxTom = perioder.maxOf { it.tom }
+        if (perioder.isEmpty() || perioder.any { it == null }) return invalid("sykmelding.sykmeldingsperioder")
+        val maxTom = perioder.filterNotNull().maxOf { it.tom }
 
         return ParsedSykmeldingsregisterRecord.Accepted(
             SykmeldingsregisterMessage.Sent(
@@ -103,9 +102,3 @@ private fun JsonProcessingException.fieldPath(): String? = (this as? JsonMapping
     ?.path
     ?.joinToString(".") { it.fieldName ?: "[${it.index}]" }
     ?.takeIf { it.isNotEmpty() }
-
-/** Jackson can put null into a list whose element type is non-null. */
-private fun <T : Any> List<T>.containsNull(): Boolean {
-    val elements: List<T?> = this
-    return null in elements
-}

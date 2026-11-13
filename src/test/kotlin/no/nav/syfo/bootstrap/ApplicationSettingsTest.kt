@@ -14,12 +14,14 @@ import no.nav.syfo.platform.kafka.SchemaRegistryAuth
 
 class ApplicationSettingsTest :
     FunSpec({
-        test("switches that change data or skip error handling are off unless NAIS enables them") {
+        test("Kafka commits on errors are disabled unless NAIS enables them") {
             assertSoftly(settingsFrom(requiredEnvironment)) {
                 kafka.commitOnAllErrors shouldBe false
-                narmestelederrelasjon.employmentCheck.employmentCheckRevokeEnabled shouldBe false
-                narmestelederbehov.dialogDispatch.enabled shouldBe false
             }
+        }
+
+        test("the dialog dispatch worker is disabled unless NAIS enables it") {
+            settingsFrom(requiredEnvironment).narmestelederbehov.dialogDispatch.enabled shouldBe false
         }
 
         test("startup names the missing setting") {
@@ -29,7 +31,6 @@ class ApplicationSettingsTest :
         }
 
         listOf(
-            Triple("AZURE_APP_PRE_AUTHORIZED_APPS", "secret-client-list", "texas.azurePreAuthorizedApps is not a valid JSON list of applications"),
             Triple("DAYS_AFTER_TOM_TO_EXPIRE_BEHOVS", "sixteen", "narmestelederbehov.expiry.daysAfterTom is not a whole number"),
             Triple("PERSON_ENRICHMENT_TASK_DELAY", "soon", "narmestelederrelasjon.personEnrichmentTask.interval is not a valid duration"),
         ).forEach { (variable, value, problem) ->
@@ -98,7 +99,6 @@ class ApplicationSettingsTest :
 private val requiredEnvironment = mapOf(
     "PUBLIC_INGRESS_URL" to "https://ingress.example",
     "FRONTEND_BASE_URL" to "https://frontend.example",
-    "DIALOGPORTEN_TASK_ENABLED" to "true",
     "ELECTOR_PATH" to "elector-path",
     "ELECTOR_SSE_URL" to "http://elector.example/sse",
     "AAREG_BASE_URL" to "https://aareg.example",
@@ -115,7 +115,6 @@ private val requiredEnvironment = mapOf(
     "NAIS_TOKEN_INTROSPECTION_ENDPOINT" to "http://texas.example/introspect",
     "NAIS_TOKEN_ENDPOINT" to "http://texas.example/token",
     "NAIS_TOKEN_EXCHANGE_ENDPOINT" to "http://texas.example/exchange",
-    "AZURE_APP_PRE_AUTHORIZED_APPS" to """[{"name": "test-cluster:team:app", "clientId": "client-id"}]""",
     "NARMESTELEDER_DB_HOST" to "db.example",
     "NARMESTELEDER_DB_PORT" to "5432",
     "NARMESTELEDER_DB_DATABASE" to "narmesteleder",
@@ -130,7 +129,6 @@ private val requiredEnvironment = mapOf(
     "VALKEY_USERNAME_FELLES_CACHE" to "valkey-user",
     "VALKEY_PASSWORD_FELLES_CACHE" to "valkey-password",
     "KAFKA_BROKERS" to "kafka.example:9093",
-    "CONSUME_KAFKA_TOPICS" to "true",
     "KAFKA_SCHEMA_REGISTRY" to "https://registry.example",
     "KAFKA_SCHEMA_REGISTRY_USER" to "registry-user",
     "KAFKA_SCHEMA_REGISTRY_PASSWORD" to "registry-password",

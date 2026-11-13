@@ -5,9 +5,8 @@ behov's latest state with Dialogporten. There is one control row per behov,
 not an immutable command per outgoing request.
 
 The worker is disabled in dev/prod until a controlled cutover.
-`DIALOGPORTEN_TASK_ENABLED` no longer starts dialog delivery; it retains its
-existing person-enrichment gating. `DIALOG_DISPATCH_ENABLED` starts the
-claim worker on every pod. Do not enable it while an old binary can deliver.
+`DIALOG_DISPATCH_ENABLED` starts the claim worker on every pod and is the only
+switch for dialog delivery. Do not enable it while an old binary can deliver.
 
 ## Backfill (V35)
 

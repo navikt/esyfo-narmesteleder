@@ -21,26 +21,18 @@ interface CreateNarmestelederbehovRepository {
  * A behov whose main organization cannot be resolved is still stored, with an error status and no dialog.
  */
 class CreateNarmestelederbehovUseCase(
-    private val settings: NarmestelederbehovCreationSettings,
     private val repository: CreateNarmestelederbehovRepository,
     private val activeSykmelding: ActiveSykmeldingLookup,
     private val mainOrganization: EmployerMainOrganizationLookup,
     private val metrics: NarmestelederbehovCreationMetrics,
 ) : CreateNarmestelederbehov {
     override suspend fun execute(command: CreateNarmestelederbehovCommand): CreateNarmestelederbehovResult {
-        ensurePersistenceEnabled().orStop { return it }
         ensureNoOpenBehov(command.employee).orStop { return it }
         ensureActiveSykmelding(command).orStop { return it }
         val resolvedMainOrganization = resolveMainOrganization(command).orStop { return it }
         val behov = newBehov(command, resolvedMainOrganization)
         val id = store(behov).orStop { return it }
         return CreateNarmestelederbehovResult.Created(id)
-    }
-
-    private fun ensurePersistenceEnabled(): CreateStep<Unit> {
-        if (settings.persistenceEnabled) return Step.Proceed
-        logger.info("Skipping persistence of LinemanagerRequirement as configured.")
-        return Step.Stop(CreateNarmestelederbehovResult.Disabled)
     }
 
     private suspend fun ensureNoOpenBehov(employee: Employee): CreateStep<Unit> = if (repository.findOpenFor(employee).isEmpty()) {

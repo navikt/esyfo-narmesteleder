@@ -47,7 +47,6 @@ class CreateNarmestelederbehovUseCaseTest :
         )
 
         class Fixture(
-            persistenceEnabled: Boolean = true,
             val openBehov: List<NarmestelederbehovId> = emptyList(),
             val hasActiveSykmelding: Boolean = true,
             val mainOrganizationResult: MainOrganizationResult = MainOrganizationResult.Found("987654321"),
@@ -66,7 +65,6 @@ class CreateNarmestelederbehovUseCaseTest :
             }
             val metrics = RecordingMetrics(effects)
             val useCase = CreateNarmestelederbehovUseCase(
-                settings = NarmestelederbehovCreationSettings(persistenceEnabled),
                 repository = repository,
                 activeSykmelding = { hasActiveSykmelding.also { effects += "active-sykmelding" } },
                 mainOrganization = { mainOrganizationResult.also { effects += "main-organization" } },
@@ -109,16 +107,6 @@ class CreateNarmestelederbehovUseCaseTest :
                     stored.mainOrganizationNumber shouldBe "111222333"
                     stored.status shouldBe BehovStatus.BEHOV_CREATED
                     effects shouldBe listOf("find-open", "create")
-                }
-            }
-        }
-
-        test("does nothing when persistence is disabled") {
-            with(Fixture(persistenceEnabled = false)) {
-                val result = useCase.execute(leesahCommand())
-                assertSoftly {
-                    result shouldBe CreateNarmestelederbehovResult.Disabled
-                    effects shouldBe emptyList()
                 }
             }
         }

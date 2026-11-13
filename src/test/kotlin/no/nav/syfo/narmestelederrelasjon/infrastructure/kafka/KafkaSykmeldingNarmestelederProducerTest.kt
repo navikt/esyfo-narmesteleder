@@ -28,8 +28,8 @@ class KafkaSykmeldingNarmestelederProducerTest :
 
         fun nlResponse(): NlResponse {
             val relasjon = linemanager()
-            val linemanagerName = Navn(faker.name().firstName(), null, faker.name().lastName())
-            val sykmeldtName = Navn(faker.name().firstName(), null, faker.name().lastName())
+            val linemanagerName = Navn(faker.firstName(), null, faker.lastName())
+            val sykmeldtName = Navn(faker.firstName(), null, faker.lastName())
             return NlResponse(
                 orgnummer = relasjon.orgNumber.value,
                 leder = Leder(

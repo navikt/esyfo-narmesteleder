@@ -1,18 +1,13 @@
 # Data flow
 
-This document shows how data enters `esyfo-narmesteleder`, moves between
-business capabilities, reaches external systems and PostgreSQL, and leaves
-through HTTP responses or Kafka events.
+How data enters the service, moves between capabilities and leaves through
+HTTP or Kafka. Modules and dependency rules: [architecture](architecture.md).
+Domain terms: [`CONTEXT.md`](../CONTEXT.md).
 
-For module responsibilities and dependency rules, see
-[Application architecture](architecture.md). For canonical domain terms, see
-[`CONTEXT.md`](../CONTEXT.md).
+## Overview
 
-The diagrams describe runtime behavior, not package or dependency injection
-structure. Solid arrows are synchronous calls. Dashed arrows are asynchronous
-Kafka flows or later background processing.
-
-## System overview
+Solid arrows are synchronous calls; dashed arrows are Kafka or background
+processing.
 
 ```mermaid
 flowchart LR
@@ -75,388 +70,173 @@ flowchart LR
     relation -.-> esyfoLeesah
 ```
 
-The database is shared physically, but table ownership follows the capability
-boundaries described in [Application architecture](architecture.md).
-`narmestelederstatistikk` reads private projections over tables owned by other
-capabilities and never writes to them. Relation search and behov expiry also
-read `sendt_sykmelding` through private read-only projections.
+One PostgreSQL database; table ownership follows capability boundaries.
+`narmestelederstatistikk`, relation search and behov expiry read other
+capabilities' tables (`nl_behov`, `narmeste_leder`, `sendt_sykmelding`) only
+through private read-only projections. Valkey caches Ereg organizations and PDL
+person details.
 
-Valkey caches Ereg organization data and PDL-derived person details used by
-organization access and relation flows.
+## Entry points
 
-## Runtime entry points
+### HTTP
 
-### HTTP APIs
+| Route | Use case | Flow |
+| --- | --- | --- |
+| `GET /api/v1/access/organizations` | `ListAccessibleOrganizationsUseCase` | Organizations the personnel manager can access, from Altinn Tilganger. |
+| `GET /api/v1/linemanager/requirement` | `ListNarmestelederbehovUseCase` | Check access, read open needs, resolve and persist missing employee names (PDL). |
+| `GET /api/v1/linemanager/requirement/{id}` | `GetNarmestelederbehovUseCase` | Read need, resolve and persist missing name (PDL), **then** check access. |
+| `PUT /api/v1/linemanager/requirement/{id}` | `FulfillNarmestelederbehovUseCase` | See [Fulfil a need](#fulfil-a-need). |
+| `POST /api/v1/linemanager` | `SubmitNarmestelederrelasjonUseCase` | See [Submit a relation](#submit-a-relation). |
+| `POST /api/v1/linemanager/revoke` | `RevokeActiveNarmestelederrelasjonUseCase` | Check access, resolve employee (PDL), validate last name, read active relation, publish. No active relation is success. |
+| `POST /internal/api/v1/lookup` | `LookupActiveNarmestelederUseCase` | Active relation for employee and organization. Entra ID role `linemanager-lookup`. |
+| `POST /internal/api/v1/linemanager/search` | `SearchActiveNarmestelederrelasjonerUseCase` | Check access, search active relations. |
+| `GET /internal/api/v1/employee/linemanager` | `ListActiveNarmesteledereForEmployeeUseCase` | Active relations for the authenticated employee; no organization access check. |
+| `GET /internal/api/v1/linemanager/{id}` | `GetNarmestelederrelasjonUseCase` | Read relation, check access, require active sykmelding (else 404), add Ereg name. |
+| `DELETE /internal/api/v1/linemanager/{id}` | `RevokeNarmestelederrelasjonUseCase` | Read relation, publish revocation. Employee or manager in the relation skip the access check. |
+| `GET /internal/api/v1/linemanager/statistics` | `GetNarmestelederstatistikkUseCase` | Check access, aggregate over behov, relation and sykmelding projections. |
 
-| Trigger                                       | Capability                | Application entry point                      | Main data flow                                                                                      |
-| --------------------------------------------- | ------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `GET /api/v1/access/organizations`            | `organisasjonstilgang`    | `ListAccessibleOrganizationsUseCase`         | Resolve organizations available to the authenticated personnel manager through Altinn Tilganger.    |
-| `GET /api/v1/linemanager/requirement` | `narmestelederbehov` | `ListNarmestelederbehovUseCase` | Check organization access, read open needs, then resolve and persist missing employee names through PDL. |
-| `GET /api/v1/linemanager/requirement/{id}` | `narmestelederbehov` | `GetNarmestelederbehovUseCase` | Read one need, resolve and persist a missing employee name through PDL, then check organization access. This legacy order is tracked by [#602](https://github.com/navikt/esyfo-narmesteleder/issues/602). |
-| `PUT /api/v1/linemanager/requirement/{id}`    | `narmestelederbehov`      | `FulfillNarmestelederbehovUseCase`           | Check access, establish a relation and atomically mark the need fulfilled with pending dialog reconciliation. |
-| `POST /api/v1/linemanager`                    | `narmestelederrelasjon`   | `SubmitNarmestelederrelasjonUseCase`         | Check access, validate the proposed relation and publish an establishment command.                  |
-| `POST /api/v1/linemanager/revoke` | `narmestelederrelasjon` | `RevokeActiveNarmestelederrelasjonUseCase` | Check organization access, resolve the employee in PDL, validate the submitted last name and read the active relation before publishing. No active relation is treated as success. |
-| `POST /internal/api/v1/lookup`                | `narmestelederrelasjon`   | `LookupActiveNarmestelederUseCase`           | Read the active relation for an employee and organization.                                          |
-| `POST /internal/api/v1/linemanager/search`    | `narmestelederrelasjon`   | `SearchActiveNarmestelederrelasjonerUseCase` | Check organization access and search active relations.                                              |
-| `GET /internal/api/v1/employee/linemanager`   | `narmestelederrelasjon`   | `ListActiveNarmesteledereForEmployeeUseCase` | Read active relations for the authenticated employee.                                               |
-| `GET /internal/api/v1/linemanager/{id}` | `narmestelederrelasjon` | `GetNarmestelederrelasjonUseCase` | Read the relation, check access, require an active sykmelding and enrich the response with the Ereg organization name. No active sykmelding returns 404. |
-| `DELETE /internal/api/v1/linemanager/{id}` | `narmestelederrelasjon` | `RevokeNarmestelederrelasjonUseCase` | Read the relation and publish a revocation. The employee or manager in the relation may revoke directly; other callers require organization access. |
-| `GET /internal/api/v1/linemanager/statistics` | `narmestelederstatistikk` | `GetNarmestelederstatistikkUseCase`          | Check organization access and aggregate a read model across behov, relation and sykmelding tables.  |
-
-Operational health, metrics, OpenAPI and Swagger endpoints belong to
-`platform` and are not business data flows.
+Health, metrics and Swagger belong to `platform`.
 
 ### Kafka consumers
 
-| Topic                                      | Consumer                                         | Processing                                                                                                                                                                              |
-| ------------------------------------------ | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `teamsykmelding.syfo-sendt-sykmelding`     | `SendtSykmeldingKafkaConsumer`                   | Handles the employee's `riktigNarmesteLeder` answer. It creates a need when no answer exists, or publishes a relation revocation when the answer is `NEI`.                              |
-| `teamsykmelding.syfo-sendt-sykmelding`     | `PersistSendtSykmeldingConsumer`                 | Normalizes, deduplicates and persists sendt sykmelding records used by searches, statistics, expiry and retention. Leader-controlled and feature-flagged.                               |
-| `teamsykmelding.syfo-narmesteleder-leesah` | `LeesahNLKafkaConsumer` | Requests a need for qualifying employee-, manager-, personnel-manager- or LPS-triggered deactivations, and fulfils open needs when an active relation is observed. |
-| `teamsykmelding.syfo-narmesteleder-leesah` | `PersistNarmestelederRegisterFromLeesahConsumer` | Validates and stores the local relation register, registers persons for enrichment and republishes valid records to the team-esyfo Leesah topic. Leader-controlled and feature-flagged. |
-| `pdl.leesah-v1`                            | `PdlLeesahConsumer`                              | Refreshes names in the relation-person projection after relevant PDL name events. Leader-controlled and feature-flagged.                                                                |
+| Topic | Consumer | Processing |
+| --- | --- | --- |
+| sendt sykmelding | `SendtSykmeldingKafkaConsumer` | No `riktigNarmesteLeder` answer: create a need. Answer `NEI`: publish revocation. |
+| sendt sykmelding | `PersistSendtSykmeldingConsumer` | Normalize, deduplicate and store records for search, statistics, expiry and retention. |
+| source Leesah | `LeesahNLKafkaConsumer` | Behov lifecycle, see [Leesah](#ingest-and-republish-leesah). |
+| source Leesah | `PersistNarmestelederRegisterFromLeesahConsumer` | Store the local relation register and republish. |
+| `pdl.leesah-v1` | `PdlLeesahConsumer` | Refresh names in the relation-person projection on `NAVN_V1`. Updates existing persons only. |
+
+All except the first and third are leader-controlled.
 
 ### Background work
 
-| Execution                              | Entry point                    | Processing                                                                                                                                            |
-| -------------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Every pod, database claims with leases | `dialog-dispatch` loop | `DispatchNarmestelederbehovDialogUseCase` creates, completes or expires dialogs according to the latest behov state. |
-| Elected leader                         | `ExpireNarmestelederbehovTask` | `ExpireNarmestelederbehovUseCase` expires needs after the configured sykmelding-based cutoff.                                                         |
-| Elected leader                         | `PersonEnrichmentTask`         | `EnrichPendingRelationPersonsUseCase` resolves missing person names through PDL.                                                                      |
-| Elected leader                         | `DeleteOldSykmeldingerTask`    | `DeleteOldSykmeldinger` removes sendt sykmelding records according to the retention policy.                                                           |
-| Every pod, database claims with leases | `employment-check-seed` loop   | `SeedNarmestelederrelasjonEmploymentChecksUseCase` creates reconciliation work for active relations.                                                  |
-| Every pod, database claims with leases | `employment-check` loop        | `CheckNarmestelederrelasjonEmploymentUseCase` checks employment through Aareg and optionally publishes revocations.                                   |
+| Runs on | Entry point | Processing |
+| --- | --- | --- |
+| Leader | `ExpireNarmestelederbehovTask` | `ExpireNarmestelederbehovUseCase` expires needs after the sykmelding-based cutoff. |
+| Leader | `PersonEnrichmentTask` | `EnrichPendingRelationPersonsUseCase` fills missing names from PDL. |
+| Leader | `DeleteOldSykmeldingerTask` | `DeleteOldSykmeldinger` applies sykmelding retention. |
+| Every pod, claim/lease | `employment-check-seed` loop | `SeedNarmestelederrelasjonEmploymentChecksUseCase` creates work for active relations. |
+| Every pod, claim/lease | `employment-check` loop | `CheckNarmestelederrelasjonEmploymentUseCase`, see [Revoke](#revoke-a-relation). |
+| Every pod, claim/lease | `dialog-dispatch` loop | `DispatchNarmestelederbehovDialogUseCase` creates, completes or expires dialogs from the latest behov state. |
 
-All background work is feature-flagged. `DIALOG_DISPATCH_ENABLED` controls
-the all-pod dialog worker and is initially disabled for a controlled cutover.
-`PersonEnrichmentTask` still requires both `DIALOGPORTEN_TASK_ENABLED` and
-`PERSON_ENRICHMENT_TASK_ENABLED`. `BEHOV_MAINTENANCE_TASK_ENABLED` controls behov expiry and
-sykmelding retention. `EMPLOYMENT_CHECK_ENABLED` controls both employment
-loops, while publishing revocations additionally requires
-`EMPLOYMENT_CHECK_REVOKE_ENABLED`.
+The only feature flag is `DIALOG_DISPATCH_ENABLED`, which starts the
+`dialog-dispatch` loop. It is off in dev and prod until the controlled cutover;
+until then no dialogs are delivered. Claims and leases:
+[ADR-0003](adr/ADR-0003-planlagt-bakgrunnsarbeid-bruker-claim-med-lease.md).
+Cutover, alerts and recovery: [runbook](operations/dialog-dispatch.md).
 
-## Main write flows
+## Write flows
 
 ### Sendt sykmelding creates a need
 
-```mermaid
-sequenceDiagram
-    participant Kafka as sendt sykmelding topic
-    participant Consumer as SendtSykmeldingKafkaConsumer
-    participant Sykmelding as SendtSykmeldingHandler
-    participant Relation as HasActiveNarmestelederrelasjon
-    participant Behov as CreateNarmestelederbehov
-    participant Upstream as Dinesykmeldte / PDL
-    participant DB as PostgreSQL
-    participant Dialog as Dialogporten
-    participant Worker as Dialog dispatch worker
+1. `SendtSykmeldingHandler` skips if `HasActiveNarmestelederrelasjon` finds an
+   active relation.
+2. `CreateNarmestelederbehov` stops if an open need exists. If no
+   sykmeldingsperiode covers today, it verifies an active sykmelding in
+   Dinesykmeldte.
+3. Insert the need. The main organization is the sykmelding's
+   `juridiskOrgnummer`, not Aareg. A partial unique index stops concurrent
+   duplicates. Without a main organization the need gets an error status and no
+   dialog.
+4. Schedule dialog work in the same transaction. The `dialog-dispatch` loop
+   resolves person details, creates the Dialogporten dialog and stores its
+   state. The behov id is the `idempotentKey`, so a retry reuses a dialog that
+   was created but not stored.
 
-    Kafka-->>Consumer: Sendt sykmelding without riktigNarmesteLeder answer
-    Consumer->>Sykmelding: handleNarmestelederbehov
-    Sykmelding->>Relation: Is there an active relation?
-    Relation->>DB: Read local relation register
-    DB-->>Relation: Active relations
-    alt No active relation
-        Sykmelding->>Behov: Create need
-        Behov->>DB: Stop if an open need already exists
-        opt No sykmeldingsperiode covers today
-            Behov->>Upstream: Verify active sykmelding (Dinesykmeldte)
-        end
-        Note over Behov: Main organization comes from the sykmelding (juridiskOrgnummer), not Aareg
-        Behov->>DB: Insert need and schedule eligible work in the same transaction
-        Worker->>DB: Claim due work and commit lease/token
-        Worker->>Upstream: Resolve optional person details
-        Worker->>DB: Persist CREATE uncertainty
-        Worker->>Dialog: Create or recover using the stable key
-        Worker->>DB: Store dialog identity with ownership checks
-    else Active relation exists
-        Sykmelding-->>Consumer: Skip creation
-    end
-```
+### Fulfil a need
 
-The database unique constraint prevents concurrent sources from creating more
-than one active need for the same employee and organization. A behov stored
-without a main organization has an error status and no dialog. For a
-`BEHOV_CREATED` behov, failed dialog creation is retried with backoff by the
-claim worker. The behov id is the dialog's Dialogporten `idempotentKey`.
-If Dialogporten created the dialog but the dialog state was not stored, a
-retry reuses the existing dialog instead of creating another one.
+1. Normalize contact details, read the need, check organization access.
+2. Establish the relation: validate active sykmelding, employment and persons
+   (Dinesykmeldte, Aareg, PDL), then publish to
+   `teamsykmelding.syfo-narmesteleder`.
+3. Mark the need fulfilled and schedule dialog work in the same transaction.
+   The response does not wait for Dialogporten; the `dialog-dispatch` loop
+   completes the dialog and retries failures.
 
-### Fulfil a need and establish a relation
+Publishing comes before marking fulfilled; a failure stops later steps.
 
-```mermaid
-sequenceDiagram
-    participant Caller
-    participant API as FulfillNarmestelederbehovApi
-    participant Behov as FulfillNarmestelederbehovUseCase
-    participant Access as OrganizationAccess
-    participant Relation as EstablishNarmestelederrelasjon
-    participant Upstream as Dinesykmeldte / Aareg / PDL
-    participant Command as teamsykmelding.syfo-narmesteleder
-    participant DB as PostgreSQL
-    participant Dialog as Dialogporten
-    participant Worker as Dialog dispatch worker
+### Submit a relation
 
-    Caller->>API: PUT requirement/{id}
-    API->>Behov: Fulfil command
-    Behov->>Behov: Normalize manager contact details
-    Behov->>DB: Find need
-    Behov->>Access: Evaluate organization access
-    Access-->>Behov: Granted
-    Behov->>Relation: Establish relation
-    Relation->>Upstream: Validate active sykmelding, employment and persons
-    Relation->>Command: Publish establishment
-    Command-->>Relation: Acknowledged
-    Relation-->>Behov: Published
-    Behov->>DB: Mark need fulfilled and schedule work atomically
-    Behov-->>API: Fulfilled
-    API-->>Caller: HTTP response
-    Worker->>DB: Claim pending revision and commit lease/token
-    Worker->>Dialog: Reconcile completion
-    Worker->>DB: Persist observed state without losing newer work
-```
-
-Publishing happens before the need is marked fulfilled. A failure stops later
-effects. Dialogporten completion is eventual and never runs in the request
-path. Repository writers explicitly call `scheduleDialogDispatch` for relevant
-domain changes in their existing transaction, including creation, API/Leesah
-fulfillment and the leader-only behov expiry job. The cutover cleanup SQL also
-updates the need and schedules dispatch in one transaction; no scheduling
-trigger is installed. Manual domain changes must schedule their work explicitly.
-One control row per behov coordinates the full dialog lifecycle. Token and
-revision guards prevent stale database completion from erasing newer work;
-remote effects remain at-least-once.
-
-The worker persists CREATE uncertainty before sending, and recovers late or
-unknown outcomes before closing a dialog. Expiry uses a persisted intent and
-reads upstream state before changing it on retry. Confirmed request-validation
-failures are parked; transient and ambiguous outcomes remain retryable.
-See the [cutover and recovery runbook](operations/dialog-dispatch.md)
-for migration cleanup, legacy ambiguity, alerts and controlled replay.
-
-### Direct relation submission
-
-```mermaid
-sequenceDiagram
-    participant Caller
-    participant API as SubmitNarmestelederrelasjonApi
-    participant Submit as SubmitNarmestelederrelasjonUseCase
-    participant Access as OrganizationAccess
-    participant Establish as EstablishNarmestelederrelasjonUseCase
-    participant Upstream as Dinesykmeldte / Aareg / PDL
-    participant Command as teamsykmelding.syfo-narmesteleder
-
-    Caller->>API: POST /api/v1/linemanager
-    API->>Submit: Submit relation
-    Submit->>Submit: Normalize manager contact details
-    Submit->>Access: Evaluate organization access
-    Access-->>Submit: Granted
-    Submit->>Establish: Establish relation
-    Establish->>Upstream: Validate active sykmelding, employment and names
-    Establish->>Command: Publish establishment
-    Establish-->>Submit: Published
-    Submit-->>API: Established
-    API-->>Caller: HTTP response
-```
-
-Submission and fulfilment share the relation capability's establishment
-contract. Neither flow writes the relation register directly. The resulting
-relation is stored when it later arrives on Leesah.
+Normalize contact details, check access, then the same establishment as
+fulfilment. Neither flow writes the register; the relation is stored when it
+arrives on Leesah, so all validation happens before publishing. Name-validation
+metrics are recorded right after matching, before any side effect can fail.
 
 ### Revoke a relation
 
-```mermaid
-flowchart LR
-    explicit[Explicit API request]
-    answer[Sendt sykmelding answer NEI]
-    employment[Employment check]
+All triggers publish `NlAvbrutt` to `teamsykmelding.syfo-narmesteleder`; the
+register becomes inactive later through Leesah.
 
-    explicit --> authorize[Access and flow-specific validation]
-    answer --> deduplicate[Deduplicate by sykmelding]
-    employment --> aareg[Check employment history in Aareg]
+- **API:** checks access and submitted or stored relation data (see HTTP table
+  for the `DELETE` exception).
+- **Sendt sykmelding `NEI`:** trusts the event, publishes with
+  `ARBEIDSTAGER_SYKMELDING_REVOKE`, then stores the processed brudd. A failure
+  between publish and store can publish twice.
+- **Employment check:** replaces team sykmelding's `narmesteleder-arbeidsforhold`.
+  Keeps the relation while an employment at its organization number has not
+  ended or ended at most four months ago; otherwise publishes with source
+  `narmesteleder-arbeidsforhold`. Never revokes after a failed Aareg lookup.
+  `NlAvbrutt` deactivates all active relations for orgnr and fnr, so a relation
+  established between lookup and publish can be revoked; the reference app has
+  the same race.
 
-    authorize --> publish[Publish NlAvbrutt]
-    deduplicate --> publish
-    aareg -->|Employment ended and publishing enabled| publish
+### Ingest and republish Leesah
 
-    publish --> command[teamsykmelding.syfo-narmesteleder]
-    command -.-> source[source Leesah processing]
-    source -.-> register[Local relation register becomes inactive]
-    source -.->|Deactivated by employee, manager, personnel manager or LPS| behov[Request a new behov]
-```
+`PersistNarmestelederRegisterFromLeesahConsumer`, per batch:
 
-The three triggers intentionally have different validation:
+1. `PersistNarmestelederrelasjonerFromLeesahUseCase` rejects invalid records
+   and upserts relations and involved persons (as `PENDING`).
+2. Republish valid records to `team-esyfo.syfo-narmesteleder-leesah`, then
+   commit offsets. A failed publish retries the batch, so downstream must
+   tolerate duplicates. Tombstones are forwarded, not stored.
 
-- explicit revocation checks organization access and the relevant submitted or
-  stored relation data, except that `DELETE /internal/api/v1/linemanager/{id}`
-  lets the employee or the manager in the relation revoke it without an
-  organization access check;
-- sendt sykmelding revocation trusts the event and records the processed brudd
-  after publishing, so a redelivered sykmelding is not published again once
-  the brudd is stored; a failure between publishing and storing can still
-  publish twice;
-- employment reconciliation never revokes after a failed Aareg lookup and
-  publishes only when the revocation feature flag is enabled.
+Contract and status mapping: [syfo-narmesteleder-leesah](kafka/syfo-narmesteleder-leesah.md).
 
-### Ingest and republish Leesah relations
+`LeesahNLKafkaConsumer`:
 
-```mermaid
-sequenceDiagram
-    participant Source as teamsykmelding.syfo-narmesteleder-leesah
-    participant Consumer as PersistNarmestelederRegisterFromLeesahConsumer
-    participant UseCase as PersistNarmestelederrelasjonerFromLeesahUseCase
-    participant DB as PostgreSQL
-    participant Target as team-esyfo.syfo-narmesteleder-leesah
+- an active relation fulfils the employee's open needs and schedules their
+  dialog work in the same transaction;
+- deactivation by employee, manager, personnel manager or LPS requests a new
+  need; employment-ended and new-manager deactivations do not. It is skipped
+  when a need is open or there is no active sykmelding.
 
-    Source-->>Consumer: Batch of relation events
-    Consumer->>UseCase: Validated transport records
-    UseCase->>UseCase: Reject invalid identifiers and fields
-    UseCase->>DB: Upsert relations and involved persons
-    UseCase-->>Consumer: Valid persisted records
-    Consumer->>Target: Republish records
-    Consumer->>Source: Commit offsets
-```
+### Relation-person names
 
-Persistence commits before republishing. If publication fails after the
-database commit, the batch is retried; downstream consumers must tolerate
-duplicates.
-
-Tombstones are forwarded without being stored. The event contract, status
-mapping and duplicate behavior are documented in
-[syfo-narmesteleder-leesah](kafka/syfo-narmesteleder-leesah.md).
-
-The separate `LeesahNLKafkaConsumer` reads the same source topic for the behov
-lifecycle:
-
-- an active relation fulfils the employee's open needs and atomically schedules
-  their dialog reconciliation;
-- qualifying employee-, manager-, personnel-manager- and LPS-triggered
-  deactivations request a new need. Employment-ended and new-manager
-  deactivations do not.
-
-A qualifying request can still be skipped when behov persistence is disabled,
-there is already an open need, or the employee has no active sykmelding.
-Despite its name, `PERSIST_LEESAH_NL_BEHOV` controls behov creation from every
-source, including sendt sykmelding.
-
-### Maintain the relation-person projection
-
-```mermaid
-flowchart LR
-    relationBatch[Persisted Leesah relations] --> pending[(person: PENDING)]
-    pdlEvent[PDL NAVN_V1 event] --> refresh[UpdateRelationPersonNamesUseCase]
-    pending --> enrich[EnrichPendingRelationPersonsUseCase]
-    refresh --> pdl[PDL bulk lookup]
-    enrich --> pdl
-    pdl --> projection[(person: names)]
-```
-
-Leesah ingestion registers involved employees and managers. Names are filled
-either reactively from PDL Leesah events or by the leader-controlled enrichment
-task.
+`PENDING` persons get names from PDL either on `pdl.leesah-v1` `NAVN_V1`
+events (`UpdateRelationPersonNamesUseCase`) or through `PersonEnrichmentTask`.
 
 ## Read flows
 
-Read-oriented APIs follow one of three patterns:
+- Employer-facing reads check `organisasjonstilgang` first.
+- Employee-facing reads use the authenticated identity, no organization access.
+- Internal lookup uses an Entra ID client-credentials token with the
+  `linemanager-lookup` role, granted by Nais only to configured inbound apps.
+- The behov GET endpoints write: they persist missing employee names in
+  `nl_behov`. The single-behov endpoint does this before its access check.
 
-```mermaid
-flowchart LR
-    caller[Authenticated caller] --> api[HTTP adapter]
-    api --> usecase[Query use case]
-    usecase -.-> access[Optional organisasjonstilgang]
-    access --> altinn[Altinn Tilganger / PDP / Ereg]
-    usecase --> db[(PostgreSQL read model)]
-    usecase --> upstream[Optional PDL / Ereg / Dinesykmeldte enrichment]
-    usecase --> api
-```
+## Consistency
 
-1. Employer-facing queries check `organisasjonstilgang` before returning
-   organization-scoped data.
-2. Employee-facing relation lookup uses the authenticated employee identity
-   and does not use employer organization access.
-3. Pre-authorized internal machine lookup uses Azure AD client authorization
-   and reads the relation register directly.
+- Edges (HTTP, Kafka, tasks) decide how typed upstream failures are exposed or
+  retried: [ADR-0004](adr/ADR-0004-feil-fra-eksterne-systemer-er-resultater-ikke-exceptions.md).
+- Transactions never include Kafka or HTTP calls.
+- Establishment and revocation publish first; the register follows through
+  Leesah.
+- Dialogporten lags behind behov state. Every behov writer schedules dialog
+  work in its own transaction, and the `dialog-dispatch` loop reconciles it.
 
-The behov GET endpoints are not currently read-only. When an employee name is
-missing, they resolve it through PDL and persist it in `nl_behov`. The list
-endpoint checks organization access first. The single-behov endpoint performs
-the name lookup and write before its organization-access check; this legacy
-ordering is tracked by
-[#602](https://github.com/navikt/esyfo-narmesteleder/issues/602).
+## Planned: source Leesah decommissioning
 
-`GetNarmestelederstatistikkUseCase` is the widest cross-table read model: it
-checks organization access, then reads private table projections over
-`nl_behov`, `narmeste_leder` and `sendt_sykmelding`. Relation search
-(`hasActiveSickLeave`) and behov expiry also read `sendt_sykmelding` through
-private read-only projections.
+When `teamsykmelding.syfo-narmesteleder-leesah` goes silent, both source Leesah
+consumers are removed, and establishment and revocation publish directly to
+`team-esyfo.syfo-narmesteleder-leesah` (produce-only today). Open decision on
+how the register is updated:
 
-## Failure and consistency boundaries
+- **A: consume our own topic.** Keeps publish-first ordering and one event
+  stream, but the register lags events that are already public.
+- **B: write the register synchronously, then publish.** Lookups are
+  consistent, but a failed publish after the write loses the event unless an
+  outbox or retry is added; this breaks the publish-first ordering in
+  [ADR-0002](adr/ADR-0002-organiser-backend-som-en-kapabilitetsbasert-modulaer-monolitt.md).
 
-- HTTP, Kafka and scheduled edges decide how typed upstream failures are
-  exposed, retried or postponed. See
-  [ADR-0004](adr/ADR-0004-feil-fra-eksterne-systemer-er-resultater-ikke-exceptions.md).
-- PostgreSQL transactions never include Kafka or external HTTP calls.
-- Relation establishment and revocation publish commands first; the local
-  relation register changes later through Leesah ingestion.
-- Need fulfilment publishes the relation before marking the need fulfilled.
-- Dialogporten synchronization can lag behind the behov state and is repaired
-  by background tasks.
-- The sendt sykmelding and source Leesah topics currently have separate
-  consumers for business reactions and local persistence.
-- Leader-controlled consumers and tasks run only on the elected pod.
-  Employment reconciliation runs on every pod and coordinates work through
-  database claims with leases; see
-  [ADR-0003](adr/ADR-0003-planlagt-bakgrunnsarbeid-bruker-claim-med-lease.md).
-
-## Planned change: decommissioning the source Leesah topic
-
-The current data flow depends on team sykmelding publishing relation events on
-`teamsykmelding.syfo-narmesteleder-leesah`. When that topic goes silent and is
-no longer used:
-
-- `LeesahNLKafkaConsumer` and `PersistNarmestelederRegisterFromLeesahConsumer`
-  are removed.
-- Relation establishment and revocation publish events directly to
-  `team-esyfo.syfo-narmesteleder-leesah` instead of commands to
-  `teamsykmelding.syfo-narmesteleder`. Nothing in this repository consumes
-  `team-esyfo.syfo-narmesteleder-leesah` today; it is a produce-only contract
-  for external downstream consumers.
-
-How the local relation register (`narmeste_leder`) is updated afterwards is an
-open design decision with two alternatives:
-
-**Alternative A: consume our own topic.** A new consumer in this repository
-reads `team-esyfo.syfo-narmesteleder-leesah` to update the register and drive
-the behov lifecycle (fulfilling open needs on active relations, requesting new
-needs for qualifying deactivations). This preserves today's publish-first
-semantics and keeps the event stream as the single source of ordering, but the
-register lags the publication and lookups can be stale while events are already
-public.
-
-```mermaid
-flowchart LR
-    http[Establish / revoke requests] --> publish[Publish to team-esyfo.syfo-narmesteleder-leesah]
-    publish --> consumer[New consumer in this repository]
-    consumer --> register[(Local relation register)]
-    consumer --> behov[Fulfil or request needs]
-    publish -.-> downstream[External downstream consumers]
-```
-
-**Alternative B: write the register synchronously.** The use case writes
-`narmeste_leder` directly and publishes the event for downstream consumers.
-Lookups become immediately consistent and no self-consumption is needed, but
-this changes the publish-first ordering kept by
-[ADR-0002](adr/ADR-0002-organiser-backend-som-en-kapabilitetsbasert-modulaer-monolitt.md):
-a database write that succeeds while publication fails would leave downstream
-consumers without the event unless an outbox or retry mechanism is added.
-
-```mermaid
-flowchart LR
-    http[Establish / revoke requests] --> register[(Local relation register)]
-    register --> behov[Fulfil or request needs]
-    http --> publish[Publish to team-esyfo.syfo-narmesteleder-leesah]
-    publish -.-> downstream[External downstream consumers]
-```
-
-Until that migration happens, the source Leesah consumers and the republishing
-described above remain the only writers of the local relation register.
+Until then the source Leesah consumers are the only writers of the register.

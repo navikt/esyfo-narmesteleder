@@ -3,7 +3,7 @@ package no.nav.syfo.narmestelederrelasjon.application.employmentcheck
 import no.nav.syfo.platform.observability.applicationLogger
 import java.time.Clock
 
-/** Adds new active relations to the check queue and refreshes the gauges. Both read every active relation, so they share the hourly loop. */
+/** Adds new active relations to the check queue and refreshes the backlog gauge. */
 class SeedNarmestelederrelasjonEmploymentChecksUseCase(
     private val repository: EmploymentReconciliationRepository,
     private val settings: EmploymentCheckSettings,

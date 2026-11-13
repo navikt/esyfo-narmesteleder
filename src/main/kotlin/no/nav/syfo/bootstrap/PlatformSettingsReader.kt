@@ -4,12 +4,10 @@ import io.ktor.server.config.ApplicationConfig
 import no.nav.syfo.platform.auth.texas.TexasSettings
 import no.nav.syfo.platform.auth.texas.altinn.AltinnApiSettings
 import no.nav.syfo.platform.auth.texas.altinnTilgangerExchangeTarget
-import no.nav.syfo.platform.auth.texas.preAuthorizedAppsFromJsonOrNull
 import no.nav.syfo.platform.cache.ValkeySettings
 import no.nav.syfo.platform.config.duration
 import no.nav.syfo.platform.config.flag
 import no.nav.syfo.platform.config.int
-import no.nav.syfo.platform.config.parsed
 import no.nav.syfo.platform.config.string
 import no.nav.syfo.platform.database.DatabaseSecurity
 import no.nav.syfo.platform.database.DatabaseSettings
@@ -58,7 +56,6 @@ internal fun ApplicationConfig.kafkaSettings() = KafkaSettings(
         KafkaSecurity.Plaintext
     },
     commitOnAllErrors = flag("kafka.commitOnAllErrors"),
-    shouldConsumeTopics = flag("kafka.consumeTopics"),
 )
 
 internal fun ApplicationConfig.texasSettings() = TexasSettings(
@@ -66,9 +63,6 @@ internal fun ApplicationConfig.texasSettings() = TexasSettings(
     tokenEndpoint = string("texas.tokenEndpoint"),
     tokenExchangeEndpoint = string("texas.tokenExchangeEndpoint"),
     exchangeTargetIsAltinnTilganger = altinnTilgangerExchangeTarget(string("texas.altinnTilgangerCluster")),
-    azurePreAuthorizedApps = parsed("texas.azurePreAuthorizedApps", "is not a valid JSON list of applications") {
-        preAuthorizedAppsFromJsonOrNull(it)
-    },
 )
 
 internal fun ApplicationConfig.altinnApiSettings() = AltinnApiSettings(baseUrl = string("altinn.baseUrl"))
@@ -79,7 +73,6 @@ internal fun ApplicationConfig.leaderElectionSettings() = LeaderElectionSettings
 )
 
 internal fun ApplicationConfig.maintenanceTaskSettings() = MaintenanceTaskSettings(
-    enabled = flag("maintenanceTask.enabled"),
     interval = duration("maintenanceTask.interval"),
 )
 

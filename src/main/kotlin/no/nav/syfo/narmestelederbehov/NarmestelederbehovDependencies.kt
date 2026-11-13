@@ -52,7 +52,6 @@ import org.koin.dsl.binds
 import org.koin.dsl.module
 
 fun narmestelederbehovDependencies(settings: NarmestelederbehovSettings) = module {
-    single { settings.creation }
     single {
         NarmestelederbehovDialogFactory(
             narmestelederbehovApiUrl = narmestelederbehovApiUrl(settings.dialogporten.publicIngressUrl),
@@ -113,7 +112,6 @@ fun narmestelederbehovDependencies(settings: NarmestelederbehovSettings) = modul
     single<NarmestelederbehovCreationMetrics> { MicrometerNarmestelederbehovCreationMetrics() }
     single<CreateNarmestelederbehov> {
         CreateNarmestelederbehovUseCase(
-            settings = get(),
             repository = get(),
             activeSykmelding = get(),
             mainOrganization = get(),

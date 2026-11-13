@@ -1,96 +1,74 @@
 # esyfo-narmesteleder
 
-This is the repository for narmesteleder-api, a service that provides an API for managing narmesteleder connection between employees on sick leave and their narmeste ledere.
-
-## Team
-- **Team**: team-esyfo, NAV IT
-- **Org**: navikt
+Manages relations between sykmeldte and their narmeste ledere.
 
 ## Commands
 
-```bash
-./gradlew build   # Build + test + lint
-./gradlew test    # Tests only
-```
+- Build, test and lint: `./gradlew build` (CI runs `./gradlew check`)
+- Tests only: `./gradlew test`
 
-## NAV Principles
-- **Team First**: Autonomous teams with circles of autonomy
-- **Product Development**: Continuous development over ad hoc approaches
-- **Essential Complexity**: Focus on essential, avoid accidental complexity
-- **DORA Metrics**: Measure and improve team performance
+## Docs
 
-## Platform & Auth
-- **Platform**: NAIS (Kubernetes on GCP)
-- **Auth**: Azure AD (internal users), TokenX (on-behalf-of token exchange), ID-porten (citizens), Maskinporten (machine-to-machine)
-- Incoming TokenX, Azure AD and Maskinporten authentication uses Texas-backed Ktor `Authentication` providers installed in `platformModule`; protected routes select providers with `authenticateTokenX`, `authenticateMaskinportenOrTokenX` or `authenticateAzureAd` (not Ktor's `authenticate` directly) and retain their existing use-case authorization checks. Routes are denied by default: startup fails unless every endpoint requires authentication or is declared in `publicRoutes { }`.
-- **Observability**: Prometheus metrics, Grafana Loki logs, Tempo tracing (OpenTelemetry)
+Read a doc only when the task matches, and only the relevant section
+(`grep -n '^#' <file>`).
 
-## Conventions
-- English code and comments — Norwegian for user-facing text and domain terms (e.g. dialogmote, sykmelding, oppfolgingsplan)
-- Use Context7 (`context7-resolve-library-id` → `context7-query-docs`) for library-specific patterns (not available for NAV-internal libs like Aksel/NAIS — use aksel.nav.no and doc.nais.io instead)
-- Check existing code patterns in the repository before writing new code
-- Follow the ✅ Always / ⚠️ Ask First / 🚫 Never boundaries in agent and instruction files
+- Unclear domain term: `CONTEXT.md`
+- Running locally, Docker Compose, dev tokens: `docs/development.md`
+- Adding or moving code; modules, ports, errors, transactions: `docs/architecture.md`
+- Changing an endpoint, Kafka consumer/producer or scheduled task: `docs/data-flow.md`
+- Dialogporten delivery, backfill, alerts, replay or rollback: `docs/operations/dialog-dispatch.md`
+- Adding or changing logs: `docs/logging.md`
+- Changing the Leesah topic payload: `docs/kafka/syfo-narmesteleder-leesah.md` and its schema
+- System-user 403 or Altinn PDP: `docs/system-user-access-diagnostics.md`
+- E-mail validation: `docs/email-address-rule.md`
+- `/api/v1/access/organizations` or `/internal/api/v1/employee/linemanager`: matching file in `docs/`
+- Questioning a design choice: `docs/adr/` (REST revocation, modules, claim/lease,
+  upstream errors as results, legal frame, person data)
 
-## Documentation and Working Notes
+## Rules
 
-| Tier | Location | Purpose | Persists | Checked in |
-|------|----------|---------|----------|------------|
-| **Session** | `~/.copilot/session-state/` | Scratch work for one task | No | No |
-| **Local notes** | `.local-notes/` | Plans, architecture drafts, research, AI reviews | Yes | No |
-| **Permanent docs** | `docs/` | Finalized documentation (ADRs, API docs) | Yes | Yes |
-
-**Defaults**: Planning/research/drafts → `.local-notes/`. Finalized docs → `docs/`. Task tracking → session state.
-
-When a change makes `docs/data-flow.md` inaccurate, update that document in the
-same change.
-
-## Repository Instructions
-
-This file documents the repository's conventions, commands, and boundaries. Update it directly when the technology stack, build and test commands, authentication, database, messaging, or operational practices change.
-
-This file is maintained locally in this repository; it is not generated or synchronized from another repository. Do not assume that removed `.github/` agents, skills, instructions, or workflows still exist.
-
-
-## Tech Stack
-- **Language**: Kotlin
-- **Framework**: Ktor
-- **Build**: Gradle (Kotlin DSL)
-- **Database**: PostgreSQL
-- **Messaging**: Apache Kafka
-- **Testing**: Kotest, MockK
-- **Auth**: Les NAIS-manifestene i prosjektet for å finne hvilke auth-mekanismer som er konfigurert (mulige: Azure AD, TokenX, ID-porten, Maskinporten)
-
-## Backend Patterns
-- Check `build.gradle.kts` for actual dependencies before suggesting libraries
-- Use Flyway for all database migrations — never modify existing migrations
-- Parameterized queries always — never string interpolation in SQL
-- Use `Database.ioTransaction` for suspendable Exposed JDBC transactions; do not duplicate `withContext(Dispatchers.IO)` and `suspendTransaction`
-- Follow the existing data access pattern in the repository (extension functions, repositories, etc.)
-- All configuration is declared in `src/main/resources/application.conf` and mapped to typed settings in `ApplicationSettings`; never read environment variables directly. Values that differ per environment or are secret are read from environment variables via `${?VAR}` and are never written in the file. Local runs override values in `src/test/resources/application-local.conf`
-- Structured logging — check which pattern this repo uses (KotlinLogging, SLF4J, kv() fields, MDC)
-- Follow existing code patterns in the repository
-
-## Dialogporten operations
-- Dialog delivery is worker-only. Repository writers explicitly call `scheduleDialogDispatch` for relevant behov changes in the same transaction; do not rely on database triggers.
-- `DIALOG_DISPATCH_ENABLED` controls an all-pod claim/lease worker; it is disabled in dev/prod until controlled cutover.
-- Follow `docs/operations/dialog-dispatch.md` for backfill, alerts, replay and non-overlapping rollback.
-- Run `sh scripts/check-dialog-alerts.sh` (Docker and Ruby) after changing the Prometheus rules.
-
-## Boundaries
-
-### ✅ Always
-- Run `./gradlew build` after changes
-- Use Flyway for database migrations
-- Add Prometheus metrics for business operations
-- Validate JWT issuer, audience, and expiration
-
-### ⚠️ Ask First
-- Changing database schema or Kafka event schemas
-- Modifying authentication configuration
-- Adding new GCP resources
-
-### 🚫 Never
-- Skip database migration versioning
-- Hardcode secrets or configuration values
-- Use `!!` operator without null checks
-- Bypass authentication checks
+- Write code and comments in English; use Norwegian for user-facing text and
+  domain terms.
+- Follow the nearest existing pattern. Check `gradle/libs.versions.toml` before
+  adding libraries.
+- Import `integration` only from `*.infrastructure` and `bootstrap`. Never
+  import another module's infrastructure; map cross-module foreign keys as
+  plain columns.
+- Put a single-use port in its use case's file.
+- Open transactions only in repositories, with `Database.ioTransaction`. Never
+  wrap it in `withContext(Dispatchers.IO)`. Never span a transaction over Kafka
+  or HTTP calls.
+- Pass `Connection.TRANSACTION_READ_COMMITTED` to `ioTransaction` for claims
+  and queues; the pool's default `REPEATABLE_READ` raises 40001 on concurrent
+  row updates.
+- Make transactions and HTTP calls safe to repeat: Exposed retries
+  `ioTransaction` up to 3 times on any `SQLException` (opt out with
+  `maxAttempts = 1`), and `httpClientDefault` retries all methods, including
+  POST, twice on non-4xx failures and throws on non-2xx.
+- Match new `NlResponseSource` values to the source strings team sykmelding's
+  `narmesteleder` app reads.
+- Access the database only through Exposed DSL (`Table`). Never write raw JDBC,
+  SQL strings or Exposed DAO code; migrate existing JDBC/DAO code you touch.
+- Add a new Flyway migration; never edit an existing one.
+- Read configuration through `application.conf` and `ApplicationSettings`,
+  never from environment variables directly. Local overrides go in
+  `src/test/resources/application-local.conf`.
+- Write new tests as Kotest `FunSpec` with flat `test("...")` blocks. Prefer
+  hand-written fakes over MockK graphs. Use `UpstreamTestHttpClient.kt` for
+  HTTP client tests.
+- Protect routes with `authenticateTokenX`, `authenticateMaskinportenOrTokenX`
+  or `authenticateAzureAd(role)` (role granted via Nais inbound access), never
+  Ktor's `authenticate`. Keep use-case
+  authorization checks. Declare unauthenticated endpoints in `publicRoutes { }`.
+- Call `scheduleDialogDispatch` in the same transaction as every behov change
+  that affects its dialog; no database trigger does it. Only the
+  `dialog-dispatch` worker calls Dialogporten.
+- Run `sh scripts/check-dialog-alerts.sh` (Docker and Ruby) after changing the
+  dialog dispatch Prometheus rules.
+- Add Prometheus metrics for business operations.
+- Update `docs/data-flow.md` and this file when a change makes them inaccurate.
+  Put drafts in `.local-notes/`.
+- Run `./gradlew build` after changes.
+- Ask first before changing a database or Kafka schema, authentication
+  configuration or GCP resources.
+- Never hardcode secrets or configuration. Never use `!!` without a null check.

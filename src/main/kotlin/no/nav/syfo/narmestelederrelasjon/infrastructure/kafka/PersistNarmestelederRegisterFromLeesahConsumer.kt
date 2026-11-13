@@ -67,7 +67,6 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
     private val jacksonMapper: ObjectMapper,
     private val kafkaConsumerFactory: () -> KafkaConsumer<String, String?>,
     private val scope: CoroutineScope,
-    private val enabled: Boolean,
 ) : KafkaListener,
     AutoCloseable {
     private val kafkaLog = KafkaEventLogger(logger, KafkaEventConsumer.NL_REPLAY)
@@ -78,14 +77,12 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
         jacksonMapper: ObjectMapper,
         kafkaConsumer: KafkaConsumer<String, String?>,
         scope: CoroutineScope,
-        enabled: Boolean,
     ) : this(
         persistFromLeesah = persistFromLeesah,
         narmestelederLeesahProducer = narmestelederLeesahProducer,
         jacksonMapper = jacksonMapper,
         kafkaConsumerFactory = { kafkaConsumer },
         scope = scope,
-        enabled = enabled,
     )
 
     private var job: Job? = null
@@ -95,14 +92,6 @@ class PersistNarmestelederRegisterFromLeesahConsumer(
     var commitOnAllErrors = false
 
     override fun listen() {
-        if (!enabled) {
-            logger.info(
-                "Persisting of narmesteleder from leesah topic is disabled, not starting {} consumer for {}",
-                this::class.simpleName,
-                TEAMSYKMELDING_NL_LEESAH_TOPIC
-            )
-            return
-        }
         if (job?.isActive == true) {
             logger.info("{} consumer for {} is already running", this::class.simpleName, TEAMSYKMELDING_NL_LEESAH_TOPIC)
             return

@@ -15,9 +15,9 @@ import no.nav.syfo.platform.observability.registerPodApi
 import org.koin.core.module.Module
 import org.koin.ktor.ext.get
 
-fun Application.platformModule(koinModules: List<Module>, azurePreAuthorizedApps: Set<String>) {
+fun Application.platformModule(koinModules: List<Module>) {
     configureDependencies(koinModules)
-    installTexasAuthentication(azurePreAuthorizedApps)
+    installTexasAuthentication()
     installApiPlugins()
 
     requireAuthenticatedRoutesOnStartup()

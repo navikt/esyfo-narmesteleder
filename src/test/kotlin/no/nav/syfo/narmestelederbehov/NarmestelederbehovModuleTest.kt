@@ -13,7 +13,6 @@ import no.nav.syfo.bootstrap.platformModule
 import no.nav.syfo.integration.pdl.PdlClient
 import no.nav.syfo.narmestelederbehov.api.NARMESTELEDERBEHOV_PATH
 import no.nav.syfo.narmestelederbehov.application.DispatchNarmestelederbehovDialogUseCase
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovCreationSettings
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpirySettings
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.DialogportenSettings
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenClient
@@ -44,11 +43,9 @@ class NarmestelederbehovModuleTest :
         ).forEach { (route, httpMethod, path) ->
             test("registers its dependencies and mounts the behov $route route only under the public API prefix") {
                 val settings = NarmestelederbehovSettings(
-                    creation = NarmestelederbehovCreationSettings(persistenceEnabled = false),
                     expiry = NarmestelederbehovExpirySettings(daysAfterTom = 16),
                     dialogporten = DialogportenSettings(
                         baseUrl = "https://altinn.example.invalid",
-                        tasksEnabled = true,
                         publicIngressUrl = "https://api.example.invalid",
                         frontendBaseUrl = "https://frontend.example.invalid",
                     ),
@@ -69,7 +66,7 @@ class NarmestelederbehovModuleTest :
 
                 testApplication {
                     application {
-                        platformModule(listOf(externalDependencies), setOf("test-caller"))
+                        platformModule(listOf(externalDependencies))
                         narmestelederbehovModule(settings)
                         get<DispatchNarmestelederbehovDialogUseCase>() shouldNotBe null
                     }

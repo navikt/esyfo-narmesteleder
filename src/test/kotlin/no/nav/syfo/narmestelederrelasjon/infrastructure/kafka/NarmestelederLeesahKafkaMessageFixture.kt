@@ -7,11 +7,11 @@ import java.util.UUID
 
 internal fun narmestelederLeesahKafkaMessage() = NarmestelederLeesahKafkaMessage(
     narmesteLederId = UUID.randomUUID(),
-    fnr = faker.numerify("###########"),
-    orgnummer = faker.numerify("#########"),
-    narmesteLederFnr = faker.numerify("###########"),
-    narmesteLederTelefonnummer = faker.phoneNumber().cellPhone(),
-    narmesteLederEpost = faker.internet().emailAddress(),
+    fnr = faker.fnr(),
+    orgnummer = faker.orgnummer(),
+    narmesteLederFnr = faker.fnr(),
+    narmesteLederTelefonnummer = faker.mobilnummer(),
+    narmesteLederEpost = faker.email(),
     aktivFom = LocalDate.now(),
     aktivTom = null,
     arbeidsgiverForskutterer = true,

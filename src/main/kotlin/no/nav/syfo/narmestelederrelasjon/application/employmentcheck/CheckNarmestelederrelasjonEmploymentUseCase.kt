@@ -20,7 +20,7 @@ import kotlin.time.toKotlinDuration
 // The reference app runs with TZ=Europe/Oslo and judges the rule on LocalDate.now().
 private val NORWEGIAN_TIME: ZoneId = ZoneId.of("Europe/Oslo")
 
-/** Checks employment and either records a shadow decision or publishes a revocation when live mode is enabled. */
+/** Checks employment and publishes a revocation when the employment has ended. */
 class CheckNarmestelederrelasjonEmploymentUseCase(
     private val repository: EmploymentReconciliationRepository,
     private val employmentHistoryLookup: EmploymentHistoryLookup,
@@ -28,17 +28,16 @@ class CheckNarmestelederrelasjonEmploymentUseCase(
     private val clock: Clock,
     private val metrics: EmploymentCheckMetrics,
     private val publisher: PublishNarmestelederrelasjonRevocation,
-    private val revokeEnabled: Boolean,
 ) {
     suspend fun execute() {
-        val claims = repository.claimDue(limit = settings.batchSize, lease = settings.lease, now = clock.instant(), revokeEnabled = revokeEnabled)
+        val claims = repository.claimDue(limit = settings.batchSize, lease = settings.lease, now = clock.instant())
         claims.forEach { claim -> metrics.recordCheck(check(claim)) }
     }
 
     private suspend fun check(claim: ClaimedEmploymentCheck): ClaimedCheckOutcome {
         val history = findEmploymentHistory(claim) ?: return ClaimedCheckOutcome.TIMEOUT
         val checkedAt = clock.instant()
-        val completion = when (val outcome = decide(claim, history, today = ruleDate(claim, checkedAt))) {
+        val completion = when (val outcome = decide(claim, history, today = LocalDate.ofInstant(checkedAt, NORWEGIAN_TIME))) {
             EmploymentCheckOutcome.REVOKED -> publishRevocation(claim, checkedAt)
             else -> Completion.Ready(outcome, checkedAt)
         }
@@ -52,12 +51,6 @@ class CheckNarmestelederrelasjonEmploymentUseCase(
         return withTimeoutOrNull(lookupBudget) {
             employmentHistoryLookup.findEmploymentHistory(claim.employeeIdent)
         }
-    }
-
-    private fun ruleDate(claim: ClaimedEmploymentCheck, now: Instant): LocalDate {
-        // A comparison judges the relation on the Norwegian date the source revoked it, even if we ingest or check it later.
-        val ruleInstant = if (revokeEnabled) now else claim.sourceRevokedAt ?: now
-        return LocalDate.ofInstant(ruleInstant, NORWEGIAN_TIME)
     }
 
     private suspend fun publishRevocation(claim: ClaimedEmploymentCheck, now: Instant): Completion {
@@ -107,9 +100,7 @@ class CheckNarmestelederrelasjonEmploymentUseCase(
         if (history is EmploymentHistoryResult.Unavailable) {
             logger.logEvent(employmentCheckFailed, claim.narmesteLederId, upstreamFailure = history.failure)
         }
-        val checked = completion.outcome.toClaimedOutcome()
-        if (!revokeEnabled && claim.sourceRevokedAt != null) compare(claim, checked)
-        return checked
+        return completion.outcome.toClaimedOutcome()
     }
 
     private suspend fun Completion.toCheckOutcome(
@@ -121,20 +112,6 @@ class CheckNarmestelederrelasjonEmploymentUseCase(
         is Completion.Ready -> complete(claim, history, this)
     }
 
-    /** Only for a relation team sykmelding revoked because the employment ended. A failed lookup is compared when it is retried. */
-    private fun compare(claim: ClaimedEmploymentCheck, checked: ClaimedCheckOutcome) {
-        when (checked) {
-            ClaimedCheckOutcome.WOULD_REVOKE -> metrics.recordComparison(EmploymentComparisonResult.AGREE)
-            ClaimedCheckOutcome.VALID -> {
-                metrics.recordComparison(EmploymentComparisonResult.DISAGREE)
-                logger.event(employmentCheckComparisonMismatch, claim.narmesteLederId)
-            }
-            ClaimedCheckOutcome.FAILED, ClaimedCheckOutcome.CLAIM_LOST, ClaimedCheckOutcome.TIMEOUT,
-            ClaimedCheckOutcome.REVOKED, ClaimedCheckOutcome.STALE,
-            -> Unit
-        }
-    }
-
     private fun decide(
         claim: ClaimedEmploymentCheck,
         history: EmploymentHistoryResult,
@@ -143,7 +120,7 @@ class CheckNarmestelederrelasjonEmploymentUseCase(
         is EmploymentHistoryResult.Unavailable -> EmploymentCheckOutcome.FAILED
         is EmploymentHistoryResult.Found -> when (EmploymentEndedRule.evaluate(claim.organizationNumber, history.employments, today)) {
             EmploymentEndedDecision.KEEP -> EmploymentCheckOutcome.VALID
-            EmploymentEndedDecision.REVOKE -> if (revokeEnabled) EmploymentCheckOutcome.REVOKED else EmploymentCheckOutcome.WOULD_REVOKE
+            EmploymentEndedDecision.REVOKE -> EmploymentCheckOutcome.REVOKED
         }
     }
 
@@ -156,7 +133,6 @@ class CheckNarmestelederrelasjonEmploymentUseCase(
 
     private fun EmploymentCheckOutcome.toClaimedOutcome(): ClaimedCheckOutcome = when (this) {
         EmploymentCheckOutcome.VALID -> ClaimedCheckOutcome.VALID
-        EmploymentCheckOutcome.WOULD_REVOKE -> ClaimedCheckOutcome.WOULD_REVOKE
         EmploymentCheckOutcome.FAILED -> ClaimedCheckOutcome.FAILED
         EmploymentCheckOutcome.REVOKED -> ClaimedCheckOutcome.REVOKED
     }

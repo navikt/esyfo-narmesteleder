@@ -6,17 +6,12 @@ import org.slf4j.LoggerFactory
 
 class LeaderControlledKafkaConsumer(
     private val consumer: KafkaListener,
-    private val enabled: Boolean = true,
     private val closeable: AutoCloseable? = consumer as? AutoCloseable,
 ) {
     private val lifecycleMutex = Mutex()
     private var running = false
 
     suspend fun onLeaderChange(isLeader: Boolean) {
-        if (!enabled) {
-            return
-        }
-
         lifecycleMutex.withLock {
             when {
                 isLeader && !running -> {

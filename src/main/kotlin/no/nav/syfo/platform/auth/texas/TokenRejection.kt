@@ -25,7 +25,7 @@ internal enum class TokenRejectionReason {
     SYSTEM_USER_ORGANIZATION_MISSING,
     SYSTEM_USER_ID_MISSING,
     SYSTEM_USER_ID_INVALID,
-    CLIENT_NOT_PRE_AUTHORIZED,
+    ROLE_NOT_AUTHORIZED,
 }
 
 private data class TokenRejectionDetails(val reason: TokenRejectionReason, val acr: String?)

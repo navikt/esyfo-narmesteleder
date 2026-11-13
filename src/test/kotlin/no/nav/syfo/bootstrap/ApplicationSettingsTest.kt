@@ -93,12 +93,14 @@ class ApplicationSettingsTest :
         }
     })
 
-// What NAIS injects in prod-gcp; the cluster's config file supplies the rest.
+private const val CLUSTER = "prod-gcp"
+
+// What NAIS injects in [CLUSTER]; the cluster's config file supplies the rest.
 private val requiredEnvironment = mapOf(
     "ELECTOR_PATH" to "elector-path",
     "ELECTOR_SSE_URL" to "http://elector.example/sse",
     "PDP_SUBSCRIPTION_KEY" to "subscription-key",
-    "NAIS_CLUSTER_NAME" to "prod-gcp",
+    "NAIS_CLUSTER_NAME" to CLUSTER,
     "NAIS_TOKEN_INTROSPECTION_ENDPOINT" to "http://texas.example/introspect",
     "NAIS_TOKEN_ENDPOINT" to "http://texas.example/token",
     "NAIS_TOKEN_EXCHANGE_ENDPOINT" to "http://texas.example/exchange",
@@ -125,5 +127,5 @@ private val requiredEnvironment = mapOf(
 )
 
 private fun settingsFrom(environment: Map<String, String>, overrides: Map<String, String> = emptyMap()) = ApplicationSettings.from(
-    applicationConfigWithEnvironment(environment, configResources("prod-gcp"), overrides),
+    applicationConfigWithEnvironment(environment, configResources(CLUSTER), overrides),
 )

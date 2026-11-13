@@ -8,7 +8,6 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.application.CreateNarmestelederbehovUseCase
 import no.nav.syfo.narmestelederbehov.application.EmployeePersonLookupResult
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovCreationSettings
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreationResult
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovLifecycleRepository
 import no.nav.syfo.narmestelederbehov.infrastructure.ExposedNarmestelederbehovReadRepository
@@ -33,7 +32,6 @@ class SendtSykmeldingOverviewFlowTest :
         val dialogCalls = mutableListOf<PersonalIdentificationNumber>()
         val handler = SendtSykmeldingHandler(
             createNarmestelederbehov = CreateNarmestelederbehovUseCase(
-                settings = NarmestelederbehovCreationSettings(persistenceEnabled = true),
                 repository = ExposedNarmestelederbehovLifecycleRepository(TestDB.exposedDatabase),
                 // Employer metadata and the current period make these external lookups unnecessary.
                 activeSykmelding = { error("Unexpected sick leave lookup") },

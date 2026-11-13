@@ -95,7 +95,6 @@ class ApplicationSettingsTest :
 private val requiredEnvironment = mapOf(
     "PUBLIC_INGRESS_URL" to "https://ingress.example",
     "FRONTEND_BASE_URL" to "https://frontend.example",
-    "DIALOGPORTEN_TASK_ENABLED" to "true",
     "ELECTOR_PATH" to "elector-path",
     "ELECTOR_SSE_URL" to "http://elector.example/sse",
     "AAREG_BASE_URL" to "https://aareg.example",
@@ -126,7 +125,6 @@ private val requiredEnvironment = mapOf(
     "VALKEY_USERNAME_FELLES_CACHE" to "valkey-user",
     "VALKEY_PASSWORD_FELLES_CACHE" to "valkey-password",
     "KAFKA_BROKERS" to "kafka.example:9093",
-    "CONSUME_KAFKA_TOPICS" to "true",
     "KAFKA_SCHEMA_REGISTRY" to "https://registry.example",
     "KAFKA_SCHEMA_REGISTRY_USER" to "registry-user",
     "KAFKA_SCHEMA_REGISTRY_PASSWORD" to "registry-password",

@@ -144,27 +144,11 @@ spec:
       value: https://www.nav.no/arbeidsgiver
     - name: PUBLIC_INGRESS_URL
       value: https://narmesteleder-api.nav.no
-    - name: PERSIST_LEESAH_NL_BEHOV
-      value: "true"
-    - name: CONSUME_KAFKA_TOPICS
-      value: "true"
-    - name: DIALOGPORTEN_TASK_ENABLED
-      value: "true"
     - name: DIALOGPORTEN_UPDATE_POLLING_DELAY
       value: "10m"
-    - name: PERSIST_SENDT_SYKMELDING
-      value: "true"
     - name: MAINTENANCE_TASK_DELAY
       value: "1h"
     - name: DAYS_AFTER_TOM_TO_EXPIRE_BEHOVS
       value: "16"
-    - name: BEHOV_MAINTENANCE_TASK_ENABLED
-      value: "true"
-    - name: PERSIST_NARMESTELEDER_REGISTER
-      value: "true"
-    - name: PDL_LEESAH_CONSUMER_ENABLED
-      value: "true"
-    - name: PERSON_ENRICHMENT_TASK_ENABLED
-      value: "true"
   envFrom:
     - secret: altinn-subscription-key

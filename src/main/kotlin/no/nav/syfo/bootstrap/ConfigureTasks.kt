@@ -7,9 +7,7 @@ import kotlinx.coroutines.launch
 import no.nav.syfo.narmestelederbehov.infrastructure.ExpireNarmestelederbehovTask
 import no.nav.syfo.narmestelederbehov.infrastructure.SendDialogTask
 import no.nav.syfo.narmestelederbehov.infrastructure.UpdateDialogTask
-import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.DialogportenSettings
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PersonEnrichmentTask
-import no.nav.syfo.narmestelederrelasjon.infrastructure.PersonEnrichmentTaskSettings
 import no.nav.syfo.platform.observability.logger
 import no.nav.syfo.platform.scheduling.LeaderChange
 import no.nav.syfo.platform.scheduling.LeaderChangeEvent
@@ -18,11 +16,7 @@ import org.koin.ktor.ext.inject
 import java.util.Collections
 import kotlin.getValue
 
-internal fun Application.configureBackgroundTasks(
-    dialogportenSettings: DialogportenSettings,
-    maintenanceTaskSettings: MaintenanceTaskSettings,
-    personEnrichmentTaskSettings: PersonEnrichmentTaskSettings,
-) {
+internal fun Application.configureBackgroundTasks() {
     val logger = logger()
     val sendDialogTask by inject<SendDialogTask>()
     val updateDialogTask by inject<UpdateDialogTask>()
@@ -38,25 +32,11 @@ internal fun Application.configureBackgroundTasks(
                 logger.info("Promoted to leader — starting background tasks")
                 taskJobs.lock { jobs ->
                     jobs.cancelAndClear()
-                    if (dialogportenSettings.tasksEnabled) {
-                        jobs += launch { sendDialogTask.runTask() }
-                        jobs += launch { updateDialogTask.runTask() }
-                        if (personEnrichmentTaskSettings.enabled) {
-                            jobs += launch { personEnrichmentTask.runTask() }
-                        }
-                    } else {
-                        logger.info(
-                            "Integration with Dialogporten is not enabled. " +
-                                "Skipping Dialogporten background tasks",
-                        )
-                    }
-                    if (maintenanceTaskSettings.enabled) {
-                        logger.info("Maintenance tasks are enabled. Starting behov expiry and sykmelding retention tasks.")
-                        jobs += launch { expireNarmestelederbehovTask.runTask() }
-                        jobs += launch { deleteOldSykmeldingerTask.runTask() }
-                    } else {
-                        logger.info("Maintenance tasks are NOT enabled. Skipping behov expiry and sykmelding retention tasks.")
-                    }
+                    jobs += launch { sendDialogTask.runTask() }
+                    jobs += launch { updateDialogTask.runTask() }
+                    jobs += launch { personEnrichmentTask.runTask() }
+                    jobs += launch { expireNarmestelederbehovTask.runTask() }
+                    jobs += launch { deleteOldSykmeldingerTask.runTask() }
                 }
             }
 

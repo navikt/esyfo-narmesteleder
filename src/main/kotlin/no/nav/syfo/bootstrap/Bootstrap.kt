@@ -23,15 +23,7 @@ fun Application.bootstrap(settings: ApplicationSettings, koinModules: List<Modul
     narmestelederbehovModule(settings.narmestelederbehov)
     narmestelederstatistikkModule()
     sykmeldingModule()
-    configureKafkaConsumers(
-        kafkaSettings = settings.kafka,
-        narmestelederrelasjonKafkaSettings = settings.narmestelederrelasjon.kafka,
-        sykmeldingKafkaSettings = settings.sykmelding,
-    )
-    configureBackgroundTasks(
-        dialogportenSettings = settings.narmestelederbehov.dialogporten,
-        maintenanceTaskSettings = settings.maintenanceTask,
-        personEnrichmentTaskSettings = settings.narmestelederrelasjon.personEnrichmentTask,
-    )
+    configureKafkaConsumers(settings.kafka)
+    configureBackgroundTasks()
     configureEmploymentChecks()
 }

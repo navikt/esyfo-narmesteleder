@@ -42,7 +42,6 @@ class PersistSendtSykmeldingConsumer(
     private val jacksonMapper: ObjectMapper,
     private val kafkaConsumerFactory: () -> KafkaConsumer<String, String?>,
     private val scope: CoroutineScope,
-    private val enabled: Boolean,
 ) : KafkaListener,
     AutoCloseable {
     private val kafkaLog = KafkaEventLogger(logger, KafkaEventConsumer.SENT_SYKMELDING_PERSIST)
@@ -52,13 +51,11 @@ class PersistSendtSykmeldingConsumer(
         jacksonMapper: ObjectMapper,
         kafkaConsumer: KafkaConsumer<String, String?>,
         scope: CoroutineScope,
-        enabled: Boolean,
     ) : this(
         handler = handler,
         jacksonMapper = jacksonMapper,
         kafkaConsumerFactory = { kafkaConsumer },
         scope = scope,
-        enabled = enabled,
     )
 
     private var job: Job? = null
@@ -68,11 +65,6 @@ class PersistSendtSykmeldingConsumer(
     var commitOnAllErrors = false
 
     override fun listen() {
-        if (!enabled) {
-            logger.info("Persisting of sendt sykmelding is disabled, not starting consumer for $SENDT_SYKMELDING_TOPIC")
-            return
-        }
-
         if (job?.isActive == true) {
             logger.info("Persist consumer for {} is already running", SENDT_SYKMELDING_TOPIC)
             return

@@ -37,7 +37,6 @@ sealed interface NarmestelederbehovSource {
 
 sealed interface CreateNarmestelederbehovResult {
     data class Created(val id: NarmestelederbehovId) : CreateNarmestelederbehovResult
-    data object Disabled : CreateNarmestelederbehovResult
     data object AlreadyExists : CreateNarmestelederbehovResult
     data object NoActiveSykmelding : CreateNarmestelederbehovResult
 

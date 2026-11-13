@@ -155,8 +155,7 @@ changes.
 `narmestelederrelasjon/infrastructure/kafka` consumes the team-sykmelding topic
 (consumer group `esyfo-narmesteleder-leesah-persist-consumer`), stores valid
 relations through `PersistNarmestelederrelasjonerFromLeesahUseCase`, and then republishes the original key and value of the
-validated records unchanged with `NarmestelederLeesahProducer`. Publishing is
-enabled by `PERSIST_NARMESTELEDER_REGISTER` (enabled in dev and prod).
+validated records unchanged with `NarmestelederLeesahProducer`.
 
 Because values are republished byte for byte, format changes made by
 team-sykmelding, such as new properties or `status` values, appear on this

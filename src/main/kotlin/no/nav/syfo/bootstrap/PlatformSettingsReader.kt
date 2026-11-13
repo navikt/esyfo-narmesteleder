@@ -56,7 +56,6 @@ internal fun ApplicationConfig.kafkaSettings() = KafkaSettings(
         KafkaSecurity.Plaintext
     },
     commitOnAllErrors = flag("kafka.commitOnAllErrors"),
-    shouldConsumeTopics = flag("kafka.consumeTopics"),
 )
 
 internal fun ApplicationConfig.texasSettings() = TexasSettings(
@@ -74,7 +73,6 @@ internal fun ApplicationConfig.leaderElectionSettings() = LeaderElectionSettings
 )
 
 internal fun ApplicationConfig.maintenanceTaskSettings() = MaintenanceTaskSettings(
-    enabled = flag("maintenanceTask.enabled"),
     interval = duration("maintenanceTask.interval"),
 )
 

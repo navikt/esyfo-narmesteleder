@@ -107,10 +107,7 @@ Health, metrics and Swagger belong to `platform`.
 | source Leesah | `PersistNarmestelederRegisterFromLeesahConsumer` | Store the local relation register and republish. |
 | `pdl.leesah-v1` | `PdlLeesahConsumer` | Refresh names in the relation-person projection on `NAVN_V1`. Updates existing persons only. |
 
-All except the first and third are leader-controlled. Flags:
-`PERSIST_SENDT_SYKMELDING`, `PERSIST_NARMESTELEDER_REGISTER`,
-`PDL_LEESAH_CONSUMER_ENABLED`. Despite its name, `PERSIST_LEESAH_NL_BEHOV`
-controls behov creation from every source, including sendt sykmelding.
+All except the first and third are leader-controlled.
 
 ### Background work
 
@@ -124,10 +121,7 @@ controls behov creation from every source, including sendt sykmelding.
 | Every pod, claim/lease | `employment-check-seed` loop | `SeedNarmestelederrelasjonEmploymentChecksUseCase` creates work for active relations. |
 | Every pod, claim/lease | `employment-check` loop | `CheckNarmestelederrelasjonEmploymentUseCase`, see [Revoke](#revoke-a-relation). |
 
-Flags: `DIALOGPORTEN_TASK_ENABLED` (dialog tasks), plus
-`PERSON_ENRICHMENT_TASK_ENABLED` for enrichment, which starts inside the
-Dialogporten branch; `BEHOV_MAINTENANCE_TASK_ENABLED` (expiry and retention).
-Employment checks have no flag. Claims and leases:
+Consumers and tasks have no feature flags. Claims and leases:
 [ADR-0003](adr/ADR-0003-planlagt-bakgrunnsarbeid-bruker-claim-med-lease.md).
 
 ## Write flows

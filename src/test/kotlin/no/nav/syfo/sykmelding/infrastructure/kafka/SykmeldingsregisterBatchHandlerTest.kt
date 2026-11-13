@@ -4,7 +4,9 @@ import ch.qos.logback.classic.Level
 import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.inspectors.forNone
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import no.nav.syfo.platform.kafka.jacksonMapper
 import no.nav.syfo.platform.observability.withProductionLogs
@@ -44,7 +46,7 @@ class SykmeldingsregisterBatchHandlerTest :
                 assertSoftly {
                     fixture.counter(SykmeldingsregisterMetrics.DEAD_LETTERS) shouldBe 1.0
                     logs.logs.single().fields["event_type"] shouldBe "sykmeldingsregister_record_dead_lettered"
-                    logs.logs.none { it.serialized.contains(FNR) } shouldBe true
+                    logs.logs.forNone { it.serialized shouldContain FNR }
                 }
             }
         }
@@ -128,7 +130,7 @@ private class Fixture(
                 return stored
             }
         },
-        jacksonMapper = jacksonMapper(),
+        parser = SykmeldingsregisterRecordParser(jacksonMapper()),
         metrics = SykmeldingsregisterMetrics(meterRegistry),
     )
 

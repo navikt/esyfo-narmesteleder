@@ -95,9 +95,11 @@ private fun parseKey(key: String?): ParsedKey {
     return key.toUuidOrNull()?.let { ParsedKey.Valid(it) } ?: ParsedKey.Invalid(SykmeldingsregisterRejection.INVALID_KEY)
 }
 
-private fun String.toUuidOrNull(): UUID? = runCatching { UUID.fromString(this) }
-    .getOrNull()
-    ?.takeIf { it.toString().equals(this, ignoreCase = true) }
+private fun String.toUuidOrNull(): UUID? = try {
+    UUID.fromString(this).takeIf { it.toString().equals(this, ignoreCase = true) }
+} catch (_: IllegalArgumentException) {
+    null
+}
 
 /** Uses Jackson's reference chain only; the exception message may contain payload values. */
 private fun JsonProcessingException.fieldPath(): String? = (this as? JsonMappingException)

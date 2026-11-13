@@ -1,8 +1,10 @@
 package no.nav.syfo.sykmelding.infrastructure.kafka
 
+import io.kotest.assertions.assertSoftly
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.datatest.withData
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.platform.kafka.jacksonMapper
@@ -52,7 +54,8 @@ class SykmeldingsregisterRecordParserTest :
             ) { svar ->
                 val parsed = parser.parse(record(value = sykmeldingsregisterRecordDto(svar = svar).toJson()))
 
-                ((parsed as ParsedSykmeldingsregisterRecord.Accepted).message as SykmeldingsregisterMessage.Sent)
+                parsed.shouldBeInstanceOf<ParsedSykmeldingsregisterRecord.Accepted>()
+                    .message.shouldBeInstanceOf<SykmeldingsregisterMessage.Sent>()
                     .narmestelederConfirmed shouldBe false
             }
         }
@@ -103,9 +106,12 @@ class SykmeldingsregisterRecordParserTest :
             ) { invalid ->
                 val parsed = parser.parse(record(partition = 0, offset = 5, key = invalid.key, value = invalid.value))
 
-                val deadLetter = (parsed as ParsedSykmeldingsregisterRecord.Rejected).deadLetter
-                (deadLetter.position to deadLetter.sykmeldingId to deadLetter.reason) shouldBe
-                    (SykmeldingsregisterPosition(0, 5) to invalid.sykmeldingId to invalid.reason)
+                val deadLetter = parsed.shouldBeInstanceOf<ParsedSykmeldingsregisterRecord.Rejected>().deadLetter
+                assertSoftly {
+                    deadLetter.position shouldBe SykmeldingsregisterPosition(0, 5)
+                    deadLetter.sykmeldingId shouldBe invalid.sykmeldingId
+                    deadLetter.reason shouldBe invalid.reason
+                }
             }
         }
     })

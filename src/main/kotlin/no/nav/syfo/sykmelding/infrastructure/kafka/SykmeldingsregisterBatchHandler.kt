@@ -1,6 +1,5 @@
 package no.nav.syfo.sykmelding.infrastructure.kafka
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import no.nav.syfo.platform.kafka.BatchMessageHandler
 import no.nav.syfo.platform.observability.applicationEvent
 import no.nav.syfo.platform.observability.logEvent
@@ -38,11 +37,10 @@ private data class ParsedBatch(
 class SykmeldingsregisterBatchHandler(
     private val syncSykmeldingsregister: SyncSykmeldingsregister,
     private val deadLetterRepository: SykmeldingsregisterDeadLetterRepository,
-    jacksonMapper: ObjectMapper,
+    private val parser: SykmeldingsregisterRecordParser,
     private val metrics: SykmeldingsregisterMetrics,
 ) : BatchMessageHandler<String, String?> {
     private val logger = logger()
-    private val parser = SykmeldingsregisterRecordParser(jacksonMapper)
 
     override suspend fun handleBatch(records: List<ConsumerRecord<String, String?>>) {
         val batch = parseBatch(records)

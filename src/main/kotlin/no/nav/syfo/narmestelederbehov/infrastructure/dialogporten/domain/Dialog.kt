@@ -1,5 +1,6 @@
 package no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.domain
 
+import java.time.Instant
 import java.util.UUID
 
 interface DialogContent {
@@ -37,4 +38,5 @@ data class ExtendedDialog(
     override val transmissions: List<Transmission> = emptyList(),
     override val attachments: List<Attachment>? = null,
     override val isApiOnly: Boolean? = true,
+    val expiresAt: Instant? = null,
 ) : DialogContent

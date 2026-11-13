@@ -17,7 +17,7 @@ class TexasAuthenticationInstallationTest :
                 testApplication {
                     application {
                         install(Koin) { modules(module { }) }
-                        installTexasAuthentication(setOf("test-caller"))
+                        installTexasAuthentication()
                     }
                     startApplication()
                 }
@@ -26,24 +26,11 @@ class TexasAuthenticationInstallationTest :
             exception.message shouldContain "Texas authentication installed without TexasHttpClient"
         }
 
-        test("fails at installation when Azure pre-authorized apps are empty") {
-            val exception = shouldThrow<IllegalArgumentException> {
-                testApplication {
-                    application {
-                        installTexasAuthentication(mockk(), emptySet())
-                    }
-                    startApplication()
-                }
-            }
-
-            exception.message shouldContain "without pre-authorized apps"
-        }
-
         test("installs providers with TexasHttpClient from Koin") {
             testApplication {
                 application {
                     install(Koin) { modules(module { single<TexasHttpClient> { mockk() } }) }
-                    installTexasAuthentication(setOf("test-caller"))
+                    installTexasAuthentication()
                 }
                 startApplication()
             }

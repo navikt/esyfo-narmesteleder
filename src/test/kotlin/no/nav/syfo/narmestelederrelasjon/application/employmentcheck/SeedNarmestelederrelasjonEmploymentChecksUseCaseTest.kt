@@ -8,8 +8,8 @@ import java.time.ZoneOffset
 
 class SeedNarmestelederrelasjonEmploymentChecksUseCaseTest :
     FunSpec({
-        test("seeds new relations and refreshes the gauges") {
-            val stats = EmploymentCheckStats(onlyShadowUnder31Days = 1, onlyShadow31DaysOrMore = 2, due = 3)
+        test("seeds new relations and refreshes the backlog gauge") {
+            val stats = EmploymentCheckStats(due = 3)
             val repository = RecordingEmploymentReconciliationRepository().apply {
                 seeded = 7
                 this.stats = stats

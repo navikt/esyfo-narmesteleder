@@ -17,14 +17,15 @@ import no.nav.syfo.narmestelederrelasjon.application.search.SearchActiveNarmeste
 import no.nav.syfo.narmestelederrelasjon.application.submit.SubmitNarmestelederrelasjonUseCase
 import no.nav.syfo.platform.api.apiV1
 import no.nav.syfo.platform.api.internalApiV1
+import no.nav.syfo.platform.auth.texas.AzureRole
 import no.nav.syfo.platform.auth.texas.authenticateAzureAd
 import no.nav.syfo.platform.auth.texas.authenticateMaskinportenOrTokenX
 import no.nav.syfo.platform.auth.texas.authenticateTokenX
 import org.koin.ktor.ext.get
 import org.koin.ktor.plugin.koinModules
 
-fun Application.narmestelederrelasjonModule(settings: NarmestelederrelasjonEmploymentSettings) {
-    koinModules(narmestelederrelasjonDependencies(settings))
+fun Application.narmestelederrelasjonModule() {
+    koinModules(narmestelederrelasjonDependencies())
     val submit = get<SubmitNarmestelederrelasjonUseCase>()
     val revoke = get<RevokeActiveNarmestelederrelasjonUseCase>()
     val lookupActiveNarmesteleder = get<LookupActiveNarmestelederUseCase>()
@@ -40,7 +41,7 @@ fun Application.narmestelederrelasjonModule(settings: NarmestelederrelasjonEmplo
             }
         }
         internalApiV1 {
-            authenticateAzureAd {
+            authenticateAzureAd(AzureRole.LINEMANAGER_LOOKUP) {
                 registerLineManagerLookupApi(
                     lookupActiveNarmesteleder = lookupActiveNarmesteleder,
                 )

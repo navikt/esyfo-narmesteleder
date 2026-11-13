@@ -34,7 +34,7 @@ class LeesahNLKafkaConsumerTest :
         val mapper = jacksonMapper()
         val kafkaConsumer = mockk<KafkaConsumer<String, String>>(relaxed = true)
         val commands = mutableListOf<CreateNarmestelederbehovCommand>()
-        var result: CreateNarmestelederbehovResult = CreateNarmestelederbehovResult.Disabled
+        var result: CreateNarmestelederbehovResult = CreateNarmestelederbehovResult.AlreadyExists
         val createNarmestelederbehov = CreateNarmestelederbehov { command ->
             commands += command
             result

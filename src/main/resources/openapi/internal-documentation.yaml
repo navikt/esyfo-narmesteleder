@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Esyfo Narmesteleder Internal API
   version: 1.0.0
-  description: Internal APIs for looking up active line managers and statistics.
+  description: Internal APIs for looking up active line managers, statistics and accessible organizations.
 servers:
   - url: https://narmesteleder-api.ekstern.dev.nav.no
     description: Development server.
@@ -228,14 +228,48 @@ paths:
         '401':
           description: Invalid or inactive Azure AD token.
         '403':
-          description: Calling application is not pre-authorized.
+          description: The token does not have the linemanager-lookup role.
+  /api/v1/access/organizations:
+    get:
+      summary: List organizations where the authenticated person can assign line managers
+      description: |
+        Used by `narmesteleder-frontend`. The response is compatible with `@navikt/virksomhetsvelger`.
+        An organization is included when the person has the Altinn 3 resource
+        `nav_syfo_oppgi-narmesteleder` for it. A parent organization is also included when one of its
+        sub-organizations has access; sub-organizations without access are left out. A failure in
+        Altinn Tilganger, including HTTP 200 with `isError = true`, returns 500, never an empty list.
+      security:
+        - tokenx_jwt: []
+      responses:
+        '200':
+          description: Organizations the person has access to. The list can be empty.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessibleOrganizations'
+        '401':
+          description: The JWT is missing, invalid or has an unsupported issuer. The response can be without a body.
+        '403':
+          description: The caller is not a TokenX user with `acr` Level4, for example a Maskinporten system user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: |
+            Altinn Tilganger or the TokenX exchange failed (`UPSTREAM_SERVICE_UNAVAILABLE`), or an unexpected
+            error occurred.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 components:
   securitySchemes:
     azuread_jwt:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Azure AD client credentials token from a pre-authorized application.
+      description: Azure AD client credentials token with the linemanager-lookup application role.
     maskinporten_jwt:
       type: http
       scheme: bearer
@@ -247,6 +281,35 @@ components:
       bearerFormat: JWT
       description: TokenX issued JWT.
   schemas:
+    AccessibleOrganizations:
+      type: object
+      properties:
+        organizations:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccessibleOrganization'
+      required:
+        - organizations
+      additionalProperties: false
+    AccessibleOrganization:
+      type: object
+      properties:
+        orgNumber:
+          type: string
+          pattern: '^\d{9}$'
+          example: "123456789"
+        name:
+          type: string
+          example: Bedrift AS
+        subOrganizations:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccessibleOrganization'
+      required:
+        - orgNumber
+        - name
+        - subOrganizations
+      additionalProperties: false
     EmployeeLinemanagerCollection:
       type: object
       properties:

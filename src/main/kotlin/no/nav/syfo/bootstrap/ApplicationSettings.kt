@@ -11,7 +11,6 @@ import no.nav.syfo.platform.cache.ValkeySettings
 import no.nav.syfo.platform.database.DatabaseSettings
 import no.nav.syfo.platform.kafka.KafkaSettings
 import no.nav.syfo.platform.scheduling.LeaderElectionSettings
-import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingKafkaSettings
 
 /** Application settings read from `application.conf`, grouped by the module that owns them. */
 data class ApplicationSettings(
@@ -26,7 +25,6 @@ data class ApplicationSettings(
     val organisasjonstilgang: OrganisasjonstilgangSettings,
     val narmestelederbehov: NarmestelederbehovSettings,
     val narmestelederrelasjon: NarmestelederrelasjonSettings,
-    val sykmelding: SykmeldingKafkaSettings,
 ) {
     companion object {
         fun from(config: ApplicationConfig): ApplicationSettings = with(config) {
@@ -42,7 +40,6 @@ data class ApplicationSettings(
                 organisasjonstilgang = organisasjonstilgangSettings(),
                 narmestelederbehov = narmestelederbehovSettings(),
                 narmestelederrelasjon = narmestelederrelasjonSettings(),
-                sykmelding = sykmeldingSettings(),
             )
         }
     }

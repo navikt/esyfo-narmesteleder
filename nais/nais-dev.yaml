@@ -128,8 +128,6 @@ spec:
     - instance: felles-cache
       access: readwrite
   env:
-    - name: AZURE_APP_PRE_AUTHORIZED_APPS
-      value: '[{"name":"syfo-budstikka","clientId":"111b89d0-2789-4e79-973a-ffc9a3e5dba2"},{"name":"syfo-oppfolginsplan-backend","clientId":"4c1a052c-3f24-4b5a-9f25-bc452c0f1af9"}, {"name": "esyfovarsel", "clientId": "225045e5-b65b-4875-9f24-ea321b59f625"}]'
     - name: PDL_BASE_URL
       value: https://pdl-api.dev-fss-pub.nais.io/graphql
     - name: PDL_SCOPE
@@ -152,33 +150,11 @@ spec:
       value: https://www.ekstern.dev.nav.no/arbeidsgiver
     - name: PUBLIC_INGRESS_URL
       value: https://narmesteleder-api.ekstern.dev.nav.no
-    - name: PERSIST_LEESAH_NL_BEHOV
-      value: "true"
-    - name: CONSUME_KAFKA_TOPICS
-      value: "true"
-    - name: DIALOGPORTEN_TASK_ENABLED
-      value: "true"
     - name: DIALOGPORTEN_UPDATE_POLLING_DELAY
       value: "10m"
-    - name: PERSIST_SENDT_SYKMELDING
-      value: "true"
     - name: MAINTENANCE_TASK_DELAY
       value: "10m"
     - name: DAYS_AFTER_TOM_TO_EXPIRE_BEHOVS
       value: "16"
-    - name: BEHOV_MAINTENANCE_TASK_ENABLED
-      value: "true"
-    - name: PERSIST_NARMESTELEDER_REGISTER
-      value: "true"
-    - name: EMPLOYMENT_CHECK_ENABLED
-      value: "true"
-    - name: EMPLOYMENT_CHECK_REVOKE_ENABLED
-      value: "true"
-    - name: EMPLOYMENT_CHECK_OBSERVE_SOURCE_ENABLED
-      value: "false"
-    - name: PDL_LEESAH_CONSUMER_ENABLED
-      value: "true"
-    - name: PERSON_ENRICHMENT_TASK_ENABLED
-      value: "true"
   envFrom:
     - secret: altinn-subscription-key

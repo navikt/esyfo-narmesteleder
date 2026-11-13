@@ -172,6 +172,19 @@ class TexasHttpClientTest :
             }
         }
 
+        test("introspectToken deserializes the custom roles claim") {
+            val settings = localTexasSettings()
+            upstreamHttpClient(
+                token = { error("Unexpected token request") },
+                upstream = { request ->
+                    request.url.toString() shouldBe settings.tokenIntrospectionEndpoint
+                    respondJson("""{"active":true,"roles":["linemanager-lookup"]}""")
+                },
+            ).use { httpClient ->
+                texasHttpClient(httpClient).introspectToken("azuread", "synthetic-token").roles shouldBe listOf("linemanager-lookup")
+            }
+        }
+
         test("azureAdSystemToken returns a Texas token exchange failure for a server error") {
             upstreamHttpClient(
                 token = { respondJson("", HttpStatusCode.ServiceUnavailable) },

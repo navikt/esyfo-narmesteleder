@@ -14,24 +14,16 @@ import org.koin.ktor.ext.get
  * Assembles the Koin graph from [koinModules] and starts every capability with settings from [settings].
  */
 fun Application.bootstrap(settings: ApplicationSettings, koinModules: List<Module> = applicationModules(settings)) {
-    platformModule(koinModules, settings.texas.azurePreAuthorizedApps)
+    platformModule(koinModules)
     bindJvmAndProcessMetrics()
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())
     organisasjonstilgangModule()
-    narmestelederrelasjonModule(settings.narmestelederrelasjon.employmentCheck)
+    narmestelederrelasjonModule()
     narmestelederbehovModule(settings.narmestelederbehov)
     narmestelederstatistikkModule()
     sykmeldingModule()
-    configureKafkaConsumers(
-        kafkaSettings = settings.kafka,
-        narmestelederrelasjonKafkaSettings = settings.narmestelederrelasjon.kafka,
-        sykmeldingKafkaSettings = settings.sykmelding,
-    )
-    configureBackgroundTasks(
-        dialogportenSettings = settings.narmestelederbehov.dialogporten,
-        maintenanceTaskSettings = settings.maintenanceTask,
-        personEnrichmentTaskSettings = settings.narmestelederrelasjon.personEnrichmentTask,
-    )
-    configureEmploymentChecks(settings.narmestelederrelasjon.employmentCheck)
+    configureKafkaConsumers(settings.kafka)
+    configureBackgroundTasks()
+    configureEmploymentChecks()
 }

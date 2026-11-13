@@ -1,178 +1,48 @@
-# Syfo-esyfo-narmesteleder
+# Nærmesteleder API
 
 [![Build Status](https://github.com/navikt/esyfo-narmesteleder/actions/workflows/build-and-deploy.yaml/badge.svg)](https://github.com/navikt/esyfo-narmesteleder/actions/workflows/build-and-deploy.yaml)
 
-[![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?style=for-the-badge&logo=Kotlin&logoColor=white)](https://kotlinlang.org/)
-[![Ktor](https://img.shields.io/badge/Ktor-%23087CFA.svg?style=for-the-badge&logo=Ktor&logoColor=white)](https://ktor.io/)
-[![Postgresql](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Kafka](https://img.shields.io/badge/Apache_Kafka-231F20?style=for-the-badge&logo=apache-kafka&logoColor=white)](https://kafka.apache.org/g/)
-
+[![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
+[![Ktor](https://img.shields.io/badge/Ktor-087CFA?logo=ktor&logoColor=white)](https://ktor.io/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Apache Kafka](https://img.shields.io/badge/Apache_Kafka-231F20?logo=apachekafka&logoColor=white)](https://kafka.apache.org/)
+[![Flyway](https://img.shields.io/badge/Flyway-CC0200?logo=flyway&logoColor=white)](https://www.red-gate.com/products/flyway/)
+[![Gradle](https://img.shields.io/badge/Gradle-02303A?logo=gradle&logoColor=white)](https://gradle.org/)
 
 ## Environments
 
-[🚀 Productions internal](https://narmesteleder-api.intern.nav.no)   
-
-[🛠️ Development internal](https://narmesteleder-api.intern.dev.nav.no)
-
-
-## OpenAPI
-The OpenAPI specification for the API is available at https://narmesteleder-api.nav.no/swagger
-There is a second OpenAPI specification for internal only api at https://narmesteleder-api.intern.nav.no/internal/swagger
+| | API | OpenAPI |
+| --- | --- | --- |
+| 🚀 Production, external | `narmesteleder-api.nav.no` | [Swagger](https://narmesteleder-api.nav.no/swagger) |
+| 🚀 Production, internal | `narmesteleder-api.intern.nav.no` | [Swagger](https://narmesteleder-api.intern.nav.no/internal/swagger) |
+| 🛠️ Development, external | `narmesteleder-api.ekstern.dev.nav.no` | [Swagger](https://narmesteleder-api.ekstern.dev.nav.no/swagger) |
+| 🛠️ Development, internal | `narmesteleder-api.intern.dev.nav.no` | [Swagger](https://narmesteleder-api.intern.dev.nav.no/internal/swagger) |
 
 ## Overview
-This is the repository for narmesteleder-api, a service that provides an API for managing narmesteleder connection between
-employees on sick leave and their narmeste ledere.
 
-It identifies when an employee has a need to be assigned a narmeste leder from their employer.
-It will communicate this need to the employer by creating a dialog in Altinn Dialogporten,
-that will contain an url endpoints that can be used with GET to retrieve details about person on sick leave, and PUT to assign narmesteleder to the employee.
+Nærmesteleder API lets employers report who is the line manager (nærmesteleder) for an employee on sick leave, and
+maintains the resulting line manager relation (nærmestelederrelasjon) between the employee, the line manager and the
+organization.
 
-## Application logging
+It identifies when an employee on sick leave needs a line manager from their employer, and tells the employer by
+creating a dialog in Altinn Dialogporten. The dialog contains URLs that can be used with GET to retrieve details about
+the person on sick leave, and with PUT to assign a line manager.
 
-See [Application logging](docs/logging.md) for the typed logger, migrated scope and the tests to extend when adding an event.
+## Documentation
 
-## Kafka-consumenter
+- [Data flow](docs/data-flow.md): HTTP endpoints, Kafka topics, external systems and background work
+- [Application architecture](docs/architecture.md)
+- [Development](docs/development.md): local setup, linting, Docker Compose and tokens in dev
+- [Application logging](docs/logging.md)
+- [Kafka topic `team-esyfo.syfo-narmesteleder-leesah`](docs/kafka/syfo-narmesteleder-leesah.md) and its
+  [JSON Schema](docs/kafka/syfo-narmesteleder-leesah.schema.json)
+- [Architecture decision records](docs/adr)
 
-Tjenesten konsumerer Kafka-topics for å opprette og vedlikeholde data som brukes i narmesteleder-flyten.
+## For Nav employees
 
-- `teamsykmelding.syfo-sendt-sykmelding`
-- `teamsykmelding.syfo-narmesteleder-leesah`
-- `pdl.leesah-v1` (fase 1)
+Internal questions can be sent via Slack in the channel [#esyfo](https://nav-it.slack.com/archives/C012X796B4L).
 
-### PDL Leesah i fase 1
+## For external consumers
 
-- Konsumenten bruker Avro og Schema Registry.
-- Konsumenten starter bare når `PDL_LEESAH_CONSUMER_ENABLED=true`.
-- Toggle er `false` i prod, og `false` i dev til tilgang til `pdl.leesah-v1` er bekreftet.
-- Logger og metrikker inneholder bare strukturell informasjon, aldri navn, fødselsnummer, personidenter eller rå meldingsinnhold.
-- Ved relevante `NAVN_V1`-hendelser brukes personidenter fra Leesah kun til å finne eksisterende personer i `person`-tabellen. For treff hentes korrekt nåværende navn og fødselsdato fra PDL før `person`-raden oppdateres.
-- Konsumenten oppretter fortsatt ikke nye personer fra `pdl.leesah-v1`; kun eksisterende personer i registeret oppdateres.
-- `Personhendelse.avsc` er hentet fra `navikt/narmesteleder` (`src/main/avro/no/nav/person/pdl/leesah/Personhendelse.avsc`, SHA `24c9a2cd2921e9cc423df8c343542ff0967564ae`).
-
-## Kafka-topics vi eier
-
-- `team-esyfo.syfo-narmesteleder-leesah`: se [topic-dokumentasjonen](docs/kafka/syfo-narmesteleder-leesah.md) og [JSON Schema](docs/kafka/syfo-narmesteleder-leesah.schema.json).
-
-
-## Diagrams
-An always up-to-date diagram can be viewed in the excellent service from [Flex Arkitektur](https://flex-arkitektur.nav.no/?apper=prod-gcp.team-esyfo.esyfo-narmesteleder).
-### C4 Container diagram
-```mermaid
-    C4Container
-    title Container diagram esyfo-narmesteleder
-    Person(person, Person, "A person using inbox in Altinn3 to find linemanager requirements sent from jNAV")
-    Container_Ext(lps, "LPS", "And external system used by organizations")
-
-    Container_Boundary(c3, "Digdir") {
-        Container_Ext(dialogporten, "Dialogporten", "", "System for creating and responding with dialogs and transmissions")
-    }
-
-    Container_Boundary(c1, "Esyfo-Narmesteleder") {
-        Container(narmesteleder-frontend, "narmesteleder-frontend", "Typescript, Docker Container", "Provides frontend for used to assign narmesteleder to employees on sick leave")
-        Container(esyfo-narmesteleder, "narmesteleder-api", "Kotlin, Docker Container", "Provides api for managing narmesteleder connection between employees on sick leave and their narmeste ledere")
-        ContainerDb(database, "CloudSQL Database", "Postgresql Database", "Stores dialogs and documents")
-        Rel(esyfo-narmesteleder, database, "Uses", "sync, JDBC")
-        Rel(narmesteleder-frontend, esyfo-narmesteleder, "Uses", "HTTPS/JSON")
-    }
-
-    Container_Boundary(kafka, "Kafka Team Sykmelding") {
-        Container_Ext(kafkaTopic-sendt-sykmelding, "Kafka Topic: teamsykmelding.syfo-sendt-sykmelding", "Kafka Topic")
-        Rel(kafkaTopic-sendt-sykmelding, esyfo-narmesteleder, "Consumes from")
-
-        Container_Ext(kafkaTopic-narmesteleder-leesah, "Kafka Topic: teamsykmelding.syfo-narmesteleder-leesah", "Kafka Topic")
-        Rel(kafkaTopic-narmesteleder-leesah, esyfo-narmesteleder, "Consumes from")
-
-        Container_Ext(kafkaTopic-syfo-narmesteleder, "Kafka Topic: teamsykmelding.syfo-narmesteleder", "Kafka Topic")
-        Rel(esyfo-narmesteleder, kafkaTopic-syfo-narmesteleder, "Publishes to")
-    }
-    
-    Container_Boundary(c2, "Other Nais applications") {
-        Container_Ext(tilganger, "Arbeidsgiver-altinn-tilganger", "Kotlin, Docker Container", "Provides Altinn access information for provided token")
-        Container_Ext(aareg, "Aareg", "", "Provides information about employment status for a person")
-        Container_Ext(ereg, "Ereg", "", "Provides information about organization structure")
-        Container_Ext(pdl, "PDL", "", "Fetches information about organization structure")
-    }
-
-    Rel(esyfo-narmesteleder, tilganger, "Uses", "HTTPS/JSON")
-    Rel(esyfo-narmesteleder, dialogporten, "Uses", "HTTPS/JSON")
-    Rel( esyfo-narmesteleder, aareg, "Uses", "HTTPS/JSON")
-    Rel( esyfo-narmesteleder, ereg, "Uses", "HTTPS/JSON")
-    Rel(esyfo-narmesteleder, pdl, "Uses", "HTTPS/JSON")
-   
-    Rel(lps, dialogporten, "Uses", "HTTPS/JSON")
-    Rel(lps, esyfo-narmesteleder, "Uses", "HTTPS/PDF")
-    Rel(person, dialogporten, "Uses", "HTTPS/HTML")
-    Rel(person, narmesteleder-frontend, "Uses", "HTTPS/HTML")
-```
-
-## Running tasks with mise
-We use [mise](https://mise.jdx.dev/) to simplify running common tasks.
-To run a task, use the command
-```bash
-mise <task-name>
-````
-
-To get a list of available tasks, run
-```bash
-mise tasks
-```
-
-## Linting and formatting is done using [ktlint](https://pinterest.github.io/ktlint/latest/)
-Please make sure to run the lint check before pushing code. Best way to ensure this is to add a pre-commit git hook.
-You can do this with the mise task
-```bash
-mise add-lint-check-as-pre-commit-hook 
-```
-Or manually by running
-u
-```bash
-mise lint
-```
-If there are any linting errors, you can try to fix them automatically with
-```bash
-mise format
-```
-
-## Docker compose
-### Size of container platform
-In order to run kafka++ you will probably need to extend the default size of your container platform. (Rancher Desktop, Colima etc.)
-
-Suggestion for Colima
-```bash
-colima start --arch aarch64 --memory 8 --cpu 4 
-```
-
-We have a docker-compose.yml file to run a postgresql database, texas and a fake authserver.
-In addition, we have a docker-compose.kafka.yml that will run a kafka broker, schema registry and kafka-io
-
-There are mise tasks to start and stop these environments.
-Start them both using
-```bash
-mise docker-up
-```
-Stop them all again
-```bash
-mise docker-down
-```
-
-Start the application locally with `mise start` (or `./gradlew runLocal`). Local runs use fake clients for external
-systems and settings from `src/test/resources/application-local.conf`; the fakes, fixtures and local settings live in the test sources and are not part of the production artifact.
-
-### Kafka-ui
-You can use [kafka-ui](http://localhost:9080) to inspect your consumers and topics. You can also publish or read messages on the topics
-
-## Authentication for dev
-In order to get a token that allows access to the service as a person, you can use the following url:
-https://tokenx-token-generator.intern.dev.nav.no/api/obo?aud=dev-gcp:team-esyfo:esyfo-narmesteleder
-
-Select "på høyt nivå".
-
-If you want to be able to set linemananger or break an existing linkt, give the ident of a Daglig leder for the organisasjonsnummer you want to test with.
-If you want to act as a person on sick leave, give the ident of a person that is registered as an employee in the organisasjonsnummer you want to test with.
-If you want to act as the linemanager, give the ident of a person that is registered as a linemanager in the organisasjonsnummer you want to test with.
-
-
-## Running requests locally
-There is a [Bruno](https://www.usebruno.com/) collection in the folder [.bruno](./.bruno) for requests against a locally running instance. See the [local Bruno testing guide](./.bruno/README.md) for setup and the `update behov and nl` workflow.
-
-There is a folder with json files for kafka messages in [local-dev-resources](./local-dev-resources). These can be used from kafka-ui to publish messages to the topics that syfo-esyfo-narmesteleder is consuming.
+External consumers, such as payroll and HR system vendors (LPS), can ask questions via Slack in the channel
+[#api-sykepenger-arbeidsgiver](https://nav-it.slack.com/archives/C08KWH7CSTW).

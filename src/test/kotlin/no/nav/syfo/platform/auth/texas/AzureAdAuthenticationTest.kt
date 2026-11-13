@@ -51,24 +51,33 @@ class AzureAdAuthenticationTest :
             }
         }
 
-        test("responds 403 when the Azure AD application is not pre-authorized") {
+        test("responds 200 when the Azure AD token has the required role") {
             val texasHttpClient = mockk<TexasHttpClient>()
-            texasHttpClient.stubAzureAd(azp = "unapproved-caller")
-            val before = tokenRejections(TokenRejectionProvider.AZURE_AD, TokenRejectionReason.CLIENT_NOT_PRE_AUTHORIZED)
+            texasHttpClient.stubAzureAd(azp = CALLING_APP, roles = listOf("linemanager-lookup"))
 
             val response = callProtectedRoute(texasHttpClient)
 
-            assertSoftly {
-                response.status shouldBe HttpStatusCode.Forbidden
-                tokenRejections(TokenRejectionProvider.AZURE_AD, TokenRejectionReason.CLIENT_NOT_PRE_AUTHORIZED) shouldBe before + 1
-            }
+            response.status shouldBe HttpStatusCode.OK
         }
 
-        test("responds 403 when the Azure AD token has no azp") {
-            val texasHttpClient = mockk<TexasHttpClient>()
-            texasHttpClient.stubAzureAd(azp = null)
+        mapOf<String, List<String>?>(
+            "no roles claim" to null,
+            "an empty roles claim" to emptyList(),
+            "only another role" to listOf("access_as_application"),
+            "the role in different case" to listOf("LINEMANAGER-LOOKUP"),
+        ).forEach { (case, roles) ->
+            test("responds 403 when the Azure AD token has $case") {
+                val texasHttpClient = mockk<TexasHttpClient>()
+                texasHttpClient.stubAzureAd(azp = CALLING_APP, roles = roles)
+                val before = tokenRejections(TokenRejectionProvider.AZURE_AD, TokenRejectionReason.ROLE_NOT_AUTHORIZED)
 
-            callProtectedRoute(texasHttpClient).status shouldBe HttpStatusCode.Forbidden
+                val response = callProtectedRoute(texasHttpClient)
+
+                assertSoftly {
+                    response.status shouldBe HttpStatusCode.Forbidden
+                    tokenRejections(TokenRejectionProvider.AZURE_AD, TokenRejectionReason.ROLE_NOT_AUTHORIZED) shouldBe before + 1
+                }
+            }
         }
 
         mapOf(
@@ -96,7 +105,7 @@ private fun callProtectedRoute(
         texasHttpClient = texasHttpClient,
         routes = {
             route("/protected") {
-                authenticateAzureAd {
+                authenticateAzureAd(AzureRole.LINEMANAGER_LOOKUP) {
                     get { call.respond(HttpStatusCode.OK) }
                 }
             }
@@ -107,7 +116,6 @@ private fun callProtectedRoute(
             }
             response.bodyAsText()
         },
-        azurePreAuthorizedApps = setOf(CALLING_APP),
     )
     return response
 }

@@ -25,12 +25,11 @@ import org.koin.ktor.plugin.Koin
 fun testApiApplication(
     texasHttpClient: TexasHttpClient,
     routes: Routing.() -> Unit,
-    azurePreAuthorizedApps: Set<String> = setOf("test-caller"),
     block: suspend ApplicationTestBuilder.() -> Unit,
 ) = startTestApplication(
     plugins = {
         install(Koin) { modules(module { single { texasHttpClient } }) }
-        installTexasAuthentication(texasHttpClient, azurePreAuthorizedApps)
+        installTexasAuthentication(texasHttpClient)
         installApiPlugins()
     },
     routes = routes,
@@ -41,12 +40,11 @@ fun testApiApplication(
 fun testRouteApplication(
     texasHttpClient: TexasHttpClient,
     routes: Routing.() -> Unit,
-    azurePreAuthorizedApps: Set<String> = setOf("test-caller"),
     block: suspend ApplicationTestBuilder.() -> Unit,
 ) = startTestApplication(
     plugins = {
         install(Koin) { modules(module { single { texasHttpClient } }) }
-        installTexasAuthentication(texasHttpClient, azurePreAuthorizedApps)
+        installTexasAuthentication(texasHttpClient)
         installContentNegotiation()
         installStatusPages()
     },

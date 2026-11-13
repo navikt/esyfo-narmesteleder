@@ -33,10 +33,10 @@ internal data class StoredNarmestelederbehov(
 )
 
 internal fun insertNarmestelederbehov(
-    sykmeldtFnr: String = faker.numerify("###########"),
-    orgnummer: String = faker.numerify("#########"),
-    hovedenhetOrgnummer: String = faker.numerify("#########"),
-    narmestelederFnr: String? = faker.numerify("###########"),
+    sykmeldtFnr: String = faker.fnr(),
+    orgnummer: String = faker.orgnummer(),
+    hovedenhetOrgnummer: String = faker.orgnummer(),
+    narmestelederFnr: String? = faker.fnr(),
     behovReason: BehovReason = BehovReason.DEAKTIVERT_NY_LEDER,
     behovStatus: BehovStatus = BehovStatus.BEHOV_CREATED,
     fornavn: String? = null,

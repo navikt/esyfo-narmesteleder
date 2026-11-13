@@ -24,8 +24,8 @@ class ExposedSykmeldingDbTest :
 
         fun sendtSykmelding(
             sykmeldingId: UUID = UUID.randomUUID(),
-            fnr: String = faker.numerify("###########"),
-            orgnummer: String = faker.numerify("#########"),
+            fnr: String = faker.fnr(),
+            orgnummer: String = faker.orgnummer(),
             fom: LocalDate = LocalDate.of(2025, 1, 1),
             tom: LocalDate = LocalDate.of(2025, 1, 10),
             syketilfelleStartDato: LocalDate? = LocalDate.of(2025, 1, 1),

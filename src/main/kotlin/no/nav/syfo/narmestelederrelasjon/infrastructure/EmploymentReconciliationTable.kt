@@ -1,6 +1,5 @@
 package no.nav.syfo.narmestelederrelasjon.infrastructure
 
-import no.nav.syfo.narmestelederrelasjon.application.employmentcheck.EmploymentCheckOutcome
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -14,19 +13,16 @@ import org.jetbrains.exposed.v1.javatime.timestampWithTimeZone
 
 internal enum class EmploymentCheckStatus { READY, CLAIMED }
 
+internal enum class StoredEmploymentCheckOutcome { VALID, WOULD_REVOKE, REVOKED, FAILED }
+
 /**
  * Work queue for checking relations against Aareg (V31). One row per relation id.
  *
  * - `next_check_at` has two meanings: when `status = READY` it is when the next check is due;
  *   when `status = CLAIMED` it is when the lease expires and another pod may reclaim the row.
  * - `claim_token` is set only while CLAIMED and fences writes from a pod that lost its claim.
- * - No foreign key to `narmeste_leder`: Leesah events may arrive in any order, and rows are kept
- *   after a relation ends for the shadow comparison.
- * - `shadow_would_revoke_at` records when shadow mode started deciding the relation would be
- *   revoked; nothing was published. A check that keeps the relation clears it.
- * - `source_revocation_observed_at` holds when team sykmelding published its revocation
- *   (Leesah `DEAKTIVERT_ARBEIDSFORHOLD` `timestamp`); the name comes from V31.
- * - Both timestamps are only for the shadow comparison and will be removed after cutover (#647).
+ * - No foreign key to `narmeste_leder`: Leesah events may arrive in any order. Rows for ended
+ *   relations and the two shadow timestamps remain until the separate database cleanup (#647).
  */
 internal object EmploymentReconciliationTable : Table("narmestelederrelasjon_employment_check") {
     val narmestelederId = javaUUID("narmeste_leder_id")
@@ -42,7 +38,7 @@ internal object EmploymentReconciliationTable : Table("narmestelederrelasjon_emp
     val lastOutcome = customEnumeration(
         name = "last_outcome",
         sql = "text",
-        fromDb = { EmploymentCheckOutcome.valueOf(it as String) },
+        fromDb = { StoredEmploymentCheckOutcome.valueOf(it as String) },
         toDb = { it.name },
     ).nullable()
     val shadowWouldRevokeAt = timestampWithTimeZone("shadow_would_revoke_at").nullable()
@@ -54,7 +50,7 @@ internal object EmploymentReconciliationTable : Table("narmestelederrelasjon_emp
         index("nlrel_employment_check_next_check_at_idx", false, nextCheckAt)
         check("nlrel_employment_check_status_check") { status inList EmploymentCheckStatus.entries }
         check("nlrel_employment_check_outcome_check") {
-            lastOutcome.isNull() or (lastOutcome inList EmploymentCheckOutcome.entries)
+            lastOutcome.isNull() or (lastOutcome inList StoredEmploymentCheckOutcome.entries)
         }
         check("nlrel_employment_check_claim_token_check") {
             ((status eq EmploymentCheckStatus.CLAIMED) and claimToken.isNotNull()) or

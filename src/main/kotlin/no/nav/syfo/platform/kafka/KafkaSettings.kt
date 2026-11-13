@@ -5,7 +5,6 @@ data class KafkaSettings(
     val schemaRegistry: KafkaSchemaRegistrySettings,
     val security: KafkaSecurity,
     val commitOnAllErrors: Boolean,
-    val shouldConsumeTopics: Boolean,
 )
 
 sealed interface KafkaSecurity {

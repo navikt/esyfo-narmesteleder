@@ -268,19 +268,6 @@ class PdlLeesahConsumerTest :
             loggedMessages() shouldNotContain "schema registry unavailable"
         }
 
-        test("listen does not subscribe or poll when the toggle is disabled") {
-            val disabled = pdlLeesahConsumer(
-                kafkaConsumer,
-                updateRelationPersonNames,
-                enabled = false,
-            )
-
-            disabled.listen()
-
-            verify(exactly = 0) { kafkaConsumer.subscribe(any<List<String>>()) }
-            verify(exactly = 0) { kafkaConsumer.poll(any<Duration>()) }
-        }
-
         test("listen logs a fatal error once before rethrowing it") {
             val fatal = LinkageError("private-canary")
             val failure = CompletableDeferred<Throwable>()
@@ -306,11 +293,9 @@ private fun pdlLeesahConsumer(
     kafkaConsumer: KafkaConsumer<String, Personhendelse>,
     updateRelationPersonNames: UpdateRelationPersonNamesUseCase,
     scope: CoroutineScope = CoroutineScope(EmptyCoroutineContext),
-    enabled: Boolean = true,
 ): PdlLeesahConsumer = PdlLeesahConsumer(
     kafkaConsumer = kafkaConsumer,
     scope = scope,
-    enabled = enabled,
     updateRelationPersonNames = updateRelationPersonNames,
     retryDelaySeconds = 0,
 )

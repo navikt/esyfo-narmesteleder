@@ -56,9 +56,13 @@ fun TexasHttpClient.stubMaskinportenSystemUser(
     )
 }
 
-/** Texas accepts an Azure AD token from the calling application [azp]. */
-fun TexasHttpClient.stubAzureAd(azp: String?) {
-    coEvery { introspectToken(AZURE_AD, any()) } returns TexasIntrospectionResponse(active = true, azp = azp)
+/** Texas accepts an Azure AD token from the calling application [azp] with [roles]. */
+fun TexasHttpClient.stubAzureAd(azp: String?, roles: List<String>? = null) {
+    coEvery { introspectToken(AZURE_AD, any()) } returns TexasIntrospectionResponse(
+        active = true,
+        azp = azp,
+        roles = roles,
+    )
 }
 
 /** Texas reports the token as inactive. A null [provider] matches every identity provider. */

@@ -44,6 +44,7 @@ data class TexasIntrospectionResponse(
     val consumer: OrganizationId? = null,
     val supplier: OrganizationId? = null,
     val scope: String? = null,
+    val roles: List<String>? = null,
 )
 
 fun TexasIntrospectionResponse.isAltinnSystemUser() = this.authorizationDetails?.first()?.type == "urn:altinn:systemuser"

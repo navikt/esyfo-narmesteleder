@@ -57,7 +57,7 @@ class SendtSykmeldingHandlerTest :
             relationLookupFailure = null
             relationLookups.clear()
             createNarmestelederbehov.commands.clear()
-            createNarmestelederbehov.result = CreateNarmestelederbehovResult.Disabled
+            createNarmestelederbehov.result = CreateNarmestelederbehovResult.AlreadyExists
             coEvery { narmestelederBruddService.revokeFromSendtSykmelding(any(), any(), any(), any(), any()) } just Runs
         }
 
@@ -261,7 +261,6 @@ class SendtSykmeldingHandlerTest :
             listOf(
                 CreateNarmestelederbehovResult.AlreadyExists,
                 CreateNarmestelederbehovResult.NoActiveSykmelding,
-                CreateNarmestelederbehovResult.Disabled,
             ).forEach { result ->
                 test("completes without error when the use case returns $result") {
                     createNarmestelederbehov.result = result
@@ -300,7 +299,7 @@ class SendtSykmeldingHandlerTest :
 
 private class RecordingCreateNarmestelederbehov : CreateNarmestelederbehov {
     val commands = mutableListOf<CreateNarmestelederbehovCommand>()
-    var result: CreateNarmestelederbehovResult = CreateNarmestelederbehovResult.Disabled
+    var result: CreateNarmestelederbehovResult = CreateNarmestelederbehovResult.AlreadyExists
 
     override suspend fun execute(command: CreateNarmestelederbehovCommand): CreateNarmestelederbehovResult {
         commands += command

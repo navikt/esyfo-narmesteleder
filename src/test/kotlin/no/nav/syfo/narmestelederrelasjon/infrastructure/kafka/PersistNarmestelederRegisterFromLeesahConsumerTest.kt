@@ -24,6 +24,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.WakeupException
+import java.time.LocalDate
 import kotlin.coroutines.EmptyCoroutineContext
 
 class PersistNarmestelederRegisterFromLeesahConsumerTest :
@@ -42,7 +43,6 @@ class PersistNarmestelederRegisterFromLeesahConsumerTest :
             jacksonMapper = objectMapper,
             kafkaConsumer = kafkaConsumer,
             scope = CoroutineScope(EmptyCoroutineContext),
-            enabled = true,
         ).also { it.commitOnAllErrors = commitOnAllErrors }
 
         fun json(message: NarmestelederLeesahKafkaMessage) = objectMapper.writeValueAsString(message)
@@ -54,7 +54,10 @@ class PersistNarmestelederRegisterFromLeesahConsumerTest :
 
         context("processBatch") {
             test("persists valid records, republishes them and tombstones with original key and value, then commits") {
-                val valid = narmestelederLeesahKafkaMessage()
+                val valid = narmestelederLeesahKafkaMessage().copy(
+                    status = LeesahStatus.DEAKTIVERT_ARBEIDSFORHOLD,
+                    aktivTom = LocalDate.parse("2026-06-15"),
+                )
                 val records = consumerRecords(
                     consumerRecord(offset = 1, key = "valid-key", value = json(valid)),
                     consumerRecord(offset = 2, key = "invalid-key", value = json(narmestelederLeesahKafkaMessage().copy(fnr = "123"))),

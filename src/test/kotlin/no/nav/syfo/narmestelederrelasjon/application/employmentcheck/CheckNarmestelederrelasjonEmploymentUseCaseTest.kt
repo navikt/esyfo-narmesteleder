@@ -54,12 +54,9 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
         fun useCase(
             settings: EmploymentCheckSettings = EmploymentCheckSettings(),
             clock: Clock = Clock.fixed(now, ZoneOffset.UTC),
-            revokeEnabled: Boolean = false,
             publisher: PublishNarmestelederrelasjonRevocation = RecordingRevocationPublisher {
-                if (revokeEnabled) {
-                    repository.validated shouldBe repository.claims.take(published.size + 1)
-                    repository.completed.size shouldBe published.size
-                }
+                repository.validated shouldBe repository.claims.take(published.size + 1)
+                repository.completed.size shouldBe published.size
                 published += it
             },
             lookup: EmploymentHistoryLookup,
@@ -70,7 +67,6 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
             clock,
             metrics,
             publisher,
-            revokeEnabled,
         )
 
         beforeTest {
@@ -79,22 +75,10 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
             published = mutableListOf()
         }
 
-        test("live mode publishes an employment-ended revocation before completing and checks again in a calendar month") {
-            useCase(revokeEnabled = true) { EmploymentHistoryResult.Found(emptyList()) }.execute()
-
-            published shouldBe listOf(
-                PublishNarmestelederrelasjonRevocationCommand(claim.employeeIdent, claim.organizationNumber, RevocationInitiator.EMPLOYMENT_ENDED),
-            )
-            repository.completed.single() shouldBe
-                RecordedCompletion(claim, EmploymentCheckOutcome.REVOKED, Instant.parse("2026-02-28T12:00:00Z"), now)
-            metrics.checks shouldBe listOf(ClaimedCheckOutcome.REVOKED)
-            repository.revokeEnabledWhenClaiming shouldBe true
-        }
-
-        test("live mode never publishes or completes a stale claim") {
+        test("never publishes or completes a stale claim") {
             repository.claimStillValid = false
 
-            useCase(revokeEnabled = true) { EmploymentHistoryResult.Found(emptyList()) }.execute()
+            useCase { EmploymentHistoryResult.Found(emptyList()) }.execute()
 
             repository.validated shouldBe listOf(claim)
             published shouldBe emptyList()
@@ -102,10 +86,10 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
             metrics.checks shouldBe listOf(ClaimedCheckOutcome.STALE)
         }
 
-        test("live mode publishes only when the publisher's max publish duration fits before the safety margin") {
+        test("publishes only when the publisher's max publish duration fits before the safety margin") {
             repository.claims = listOf(689L, 690L, 691L).map { claim.copy(claimedAt = now.minusSeconds(it)) }
 
-            useCase(revokeEnabled = true) { EmploymentHistoryResult.Found(emptyList()) }.execute()
+            useCase { EmploymentHistoryResult.Found(emptyList()) }.execute()
 
             published.size shouldBe 1
             repository.validated shouldBe listOf(repository.claims.first())
@@ -116,7 +100,6 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
         test("a publish failure is retried the next day and logged without personal data") {
             withProductionLogs(CheckNarmestelederrelasjonEmploymentUseCase::class.java) { capture ->
                 useCase(
-                    revokeEnabled = true,
                     publisher = RecordingRevocationPublisher { throw IllegalStateException("private-publish-canary ${claim.employeeIdent.value} ${claim.organizationNumber.value}") },
                 ) { EmploymentHistoryResult.Found(emptyList()) }.execute()
 
@@ -138,7 +121,7 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
             repository.completeSucceeds = false
 
             withProductionLogs(CheckNarmestelederrelasjonEmploymentUseCase::class.java) { capture ->
-                useCase(revokeEnabled = true) { EmploymentHistoryResult.Found(emptyList()) }.execute()
+                useCase { EmploymentHistoryResult.Found(emptyList()) }.execute()
 
                 published.size shouldBe 1
                 repository.completed.single().outcome shouldBe EmploymentCheckOutcome.REVOKED
@@ -152,32 +135,17 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
             metrics.checks shouldBe listOf(ClaimedCheckOutcome.CLAIM_LOST)
         }
 
-        test("live mode ignores the source revocation date and freezes comparison") {
-            repository.claims = listOf(claim.copy(sourceRevokedAt = Instant.parse("2025-12-30T12:00:00Z")))
-            val employment = Employment(claim.organizationNumber, LocalDate.parse("2025-09-29"))
-
-            useCase(revokeEnabled = true) { EmploymentHistoryResult.Found(listOf(employment)) }.execute()
-
-            published.size shouldBe 1
-            metrics.checks shouldBe listOf(ClaimedCheckOutcome.REVOKED)
-            metrics.comparisons shouldBe emptyList()
-        }
-
-        test("live mode keeps qualifying employment without publishing or comparing") {
-            repository.claims = listOf(claim.copy(sourceRevokedAt = now))
-
-            useCase(revokeEnabled = true) { EmploymentHistoryResult.Found(listOf(Employment(claim.organizationNumber, null))) }.execute()
+        test("keeps qualifying employment without publishing") {
+            useCase { EmploymentHistoryResult.Found(listOf(Employment(claim.organizationNumber, null))) }.execute()
 
             published shouldBe emptyList()
             repository.validated shouldBe emptyList()
-            repository.revokeEnabledWhenClaiming shouldBe true
             repository.completed.single().outcome shouldBe EmploymentCheckOutcome.VALID
             metrics.checks shouldBe listOf(ClaimedCheckOutcome.VALID)
-            metrics.comparisons shouldBe emptyList()
         }
 
-        test("a failed live lookup never publishes or validates a claim and retries the next day") {
-            useCase(revokeEnabled = true) { EmploymentHistoryResult.Unavailable(aaregFailure) }.execute()
+        test("a failed lookup never publishes or validates a claim and retries the next day") {
+            useCase { EmploymentHistoryResult.Unavailable(aaregFailure) }.execute()
 
             published shouldBe emptyList()
             repository.validated shouldBe emptyList()
@@ -185,7 +153,7 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
             metrics.checks shouldBe listOf(ClaimedCheckOutcome.FAILED)
         }
 
-        test("live mode recalculates the publish budget after the lookup") {
+        test("recalculates the publish budget after the lookup") {
             var checkedAt = now
             val clock = object : Clock() {
                 override fun instant(): Instant = checkedAt
@@ -193,7 +161,7 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
                 override fun withZone(zone: ZoneId): Clock = fixed(checkedAt, zone)
             }
 
-            useCase(revokeEnabled = true, clock = clock) {
+            useCase(clock = clock) {
                 checkedAt = now.plusSeconds(690)
                 EmploymentHistoryResult.Found(emptyList())
             }.execute()
@@ -206,7 +174,7 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
 
         test("cancellation during publishing is not swallowed or completed") {
             shouldThrow<CancellationException> {
-                useCase(revokeEnabled = true, publisher = RecordingRevocationPublisher { throw CancellationException("Stopping") }) {
+                useCase(publisher = RecordingRevocationPublisher { throw CancellationException("Stopping") }) {
                     EmploymentHistoryResult.Found(emptyList())
                 }.execute()
             }
@@ -231,7 +199,6 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
                 Clock.fixed(now, ZoneOffset.UTC),
                 metrics,
                 RecordingRevocationPublisher { published += it },
-                true,
             )
 
             shouldThrow<IllegalStateException> { useCase.execute() }
@@ -251,14 +218,15 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
             metrics.checks shouldBe listOf(ClaimedCheckOutcome.VALID)
         }
 
-        test("records that a relation without employment would be revoked") {
+        test("a check publishes an employment-ended revocation without a separate revocation switch") {
             useCase { EmploymentHistoryResult.Found(emptyList()) }.execute()
 
-            repository.completed.single().outcome shouldBe EmploymentCheckOutcome.WOULD_REVOKE
-            metrics.checks shouldBe listOf(ClaimedCheckOutcome.WOULD_REVOKE)
-            published shouldBe emptyList()
-            repository.validated shouldBe emptyList()
-            repository.revokeEnabledWhenClaiming shouldBe false
+            published shouldBe listOf(
+                PublishNarmestelederrelasjonRevocationCommand(claim.employeeIdent, claim.organizationNumber, RevocationInitiator.EMPLOYMENT_ENDED),
+            )
+            repository.completed.single() shouldBe
+                RecordedCompletion(claim, EmploymentCheckOutcome.REVOKED, Instant.parse("2026-02-28T12:00:00Z"), now)
+            metrics.checks shouldBe listOf(ClaimedCheckOutcome.REVOKED)
         }
 
         // Just after Norwegian midnight the UTC date is still the day before, which would keep these relations.
@@ -272,19 +240,8 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
 
                 useCase(clock = Clock.fixed(checkedAt, ZoneOffset.UTC)) { EmploymentHistoryResult.Found(listOf(employment)) }.execute()
 
-                metrics.checks shouldBe listOf(ClaimedCheckOutcome.WOULD_REVOKE)
-            }
-            test("live mode judges the rule on the Norwegian date just after midnight in $season") {
-                repository.claims = listOf(claim.copy(claimedAt = checkedAt, sourceRevokedAt = checkedAt.minusSeconds(86_400)))
-                val employment = Employment(claim.organizationNumber, endDate)
-
-                useCase(revokeEnabled = true, clock = Clock.fixed(checkedAt, ZoneOffset.UTC)) {
-                    EmploymentHistoryResult.Found(listOf(employment))
-                }.execute()
-
                 published.size shouldBe 1
                 metrics.checks shouldBe listOf(ClaimedCheckOutcome.REVOKED)
-                metrics.comparisons shouldBe emptyList()
             }
         }
 
@@ -308,8 +265,7 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
             metrics.checks shouldBe listOf(ClaimedCheckOutcome.FAILED)
         }
 
-        test("a claim taken over by another pod is counted as lost, without a comparison or a failure log") {
-            repository.claims = listOf(claim.copy(sourceRevokedAt = now))
+        test("a claim taken over by another pod is counted as lost without a failure log") {
             repository.completeSucceeds = false
 
             withProductionLogs(CheckNarmestelederrelasjonEmploymentUseCase::class.java) { capture ->
@@ -318,61 +274,6 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
                 capture.records shouldBe emptyList()
             }
             metrics.checks shouldBe listOf(ClaimedCheckOutcome.CLAIM_LOST)
-            metrics.comparisons shouldBe emptyList()
-        }
-
-        test("compares with the source's revocation and warns when we would keep the relation") {
-            val agrees = claim.copy(narmesteLederId = UUID.randomUUID(), sourceRevokedAt = now)
-            val disagrees = claim.copy(narmesteLederId = UUID.randomUUID(), sourceRevokedAt = now)
-            val fails = claim.copy(narmesteLederId = UUID.randomUUID(), sourceRevokedAt = now)
-            repository.claims = listOf(agrees, disagrees, fails)
-            val histories = listOf(
-                EmploymentHistoryResult.Found(emptyList()),
-                EmploymentHistoryResult.Found(listOf(Employment(claim.organizationNumber, null))),
-                EmploymentHistoryResult.Unavailable(aaregFailure),
-            ).iterator()
-
-            withProductionLogs(CheckNarmestelederrelasjonEmploymentUseCase::class.java) { capture ->
-                useCase { histories.next() }.execute()
-
-                RuntimeLogContract.forEvents(
-                    employmentCheckComparisonMismatch,
-                    employmentCheckFailed,
-                    exceptionTypes = setOf("IllegalStateException"),
-                ).assertValid(capture.records, expectedCount = 2)
-                val mismatch = capture.records.map { jacksonObjectMapper().readTree(it) }
-                    .single { it["event_type"].asText() == "employment_check_comparison_mismatch" }
-                mismatch["narmesteleder_id"].asText() shouldBe disagrees.narmesteLederId.toString()
-            }
-            // The failed check is compared when it is retried.
-            metrics.comparisons shouldBe listOf(EmploymentComparisonResult.AGREE, EmploymentComparisonResult.DISAGREE)
-        }
-
-        // The rule is judged on the Norwegian date the source revoked the relation, not when we ingest or check it.
-        listOf(
-            ComparisonDateCase(
-                name = "a revocation ingested the next day",
-                revokedAt = Instant.parse("2026-10-11T12:00:00Z"),
-                checkedAt = Instant.parse("2026-10-12T12:00:00Z"),
-                endDate = LocalDate.parse("2026-06-11"),
-                expected = EmploymentComparisonResult.DISAGREE,
-            ),
-            ComparisonDateCase(
-                name = "a revocation just after Norwegian midnight",
-                revokedAt = Instant.parse("2026-06-30T22:30:00Z"),
-                checkedAt = Instant.parse("2026-06-30T22:30:00Z"),
-                endDate = LocalDate.parse("2026-02-28"),
-                expected = EmploymentComparisonResult.AGREE,
-            ),
-        ).forEach { case ->
-            test("judges ${case.name} on the Norwegian date of the source's revocation") {
-                repository.claims = listOf(claim.copy(claimedAt = case.checkedAt, sourceRevokedAt = case.revokedAt))
-                val employment = Employment(claim.organizationNumber, case.endDate)
-
-                useCase(clock = Clock.fixed(case.checkedAt, ZoneOffset.UTC)) { EmploymentHistoryResult.Found(listOf(employment)) }.execute()
-
-                metrics.comparisons shouldBe listOf(case.expected)
-            }
         }
 
         test("gives up a lookup that would outlast the claim's lease") {
@@ -384,9 +285,13 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
                 // One second is left for a fresh claim, and none for a claim taken two seconds ago.
                 repository.claims = listOf(claim, claim.copy(claimedAt = now.minusSeconds(2)))
 
-                useCase(EmploymentCheckSettings(lease = CLAIM_SAFETY_MARGIN + 1.seconds), lookup = halfSecondLookup).execute()
+                useCase(
+                    settings = EmploymentCheckSettings(lease = CLAIM_SAFETY_MARGIN + 1.seconds),
+                    publisher = RecordingRevocationPublisher(maxPublishDuration = 0.seconds) { published += it },
+                    lookup = halfSecondLookup,
+                ).execute()
 
-                metrics.checks shouldBe listOf(ClaimedCheckOutcome.WOULD_REVOKE, ClaimedCheckOutcome.TIMEOUT)
+                metrics.checks shouldBe listOf(ClaimedCheckOutcome.REVOKED, ClaimedCheckOutcome.TIMEOUT)
             }
         }
 
@@ -394,11 +299,3 @@ class CheckNarmestelederrelasjonEmploymentUseCaseTest :
             shouldThrow<CancellationException> { useCase { throw CancellationException("Stopping") }.execute() }
         }
     })
-
-private data class ComparisonDateCase(
-    val name: String,
-    val revokedAt: Instant,
-    val checkedAt: Instant,
-    val endDate: LocalDate,
-    val expected: EmploymentComparisonResult,
-)

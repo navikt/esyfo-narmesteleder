@@ -95,7 +95,11 @@ private fun manifestEnvNames(path: String): Set<String> = naisManifest(path).chi
 // `{{image}}` is a deploy-time template, not YAML.
 private fun naisManifest(path: String): YamlMap = Yaml().load(File(path).readText().replace("{{image}}", "image"))
 
-private fun YamlMap.child(key: String): YamlMap = this[key] as? YamlMap ?: emptyMap<Any?, Any?>()
+private fun YamlMap.child(key: String): YamlMap = when (val value = this[key]) {
+    null -> emptyMap<String, Any?>()
+    is YamlMap -> value
+    else -> error("$key is not a map")
+}
 
 private fun YamlMap.items(key: String): List<YamlMap> = when (val value = this[key]) {
     null -> emptyList()

@@ -50,7 +50,10 @@ Read a doc only when the task matches, and only the relevant section
   SQL strings or Exposed DAO code; migrate existing JDBC/DAO code you touch.
 - Add a new Flyway migration; never edit an existing one.
 - Read configuration through `application.conf` and `ApplicationSettings`,
-  never from environment variables directly. Local overrides go in
+  never from environment variables directly; only the loader reads
+  `NAIS_CLUSTER_NAME` to select the cluster file. Put values that differ per
+  environment in `application-dev-gcp.conf`/`application-prod-gcp.conf`, not in
+  the Nais manifests' `env:`. Local overrides go in
   `src/test/resources/application-local.conf`.
 - Write new tests as Kotest `FunSpec` with flat `test("...")` blocks. Prefer
   hand-written fakes over MockK graphs. Use `UpstreamTestHttpClient.kt` for

@@ -5,7 +5,7 @@ import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.BrukerSvar
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.Event
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.KafkaMetadata
-import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.RiktigNarmesteLeder
+import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.NarmestelederAnswer
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.Sykmelding
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.Sykmeldingsperiode
 import java.time.LocalDate
@@ -22,7 +22,7 @@ fun sykmeldingsregisterRecordDto(
     event = Event(
         timestamp = timestamp,
         arbeidsgiver = arbeidsgiver,
-        brukerSvar = BrukerSvar(riktigNarmesteLeder = svar?.let { RiktigNarmesteLeder(svar = it) }),
+        brukerSvar = BrukerSvar(riktigNarmesteLeder = svar?.let { NarmestelederAnswer(svar = it) }),
     ),
     sykmelding = Sykmelding(sykmeldingsperioder = sykmeldingsperioder),
 )

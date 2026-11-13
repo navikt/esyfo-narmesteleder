@@ -24,10 +24,10 @@ data class SykmeldingsregisterRecordDto(
     )
 
     data class BrukerSvar(
-        val riktigNarmesteLeder: RiktigNarmesteLeder? = null,
+        val riktigNarmesteLeder: NarmestelederAnswer? = null,
     )
 
-    data class RiktigNarmesteLeder(
+    data class NarmestelederAnswer(
         val svar: String,
     )
 

@@ -21,7 +21,10 @@ fun loadApplicationConfig(cluster: String? = System.getenv(NAIS_CLUSTER_NAME)): 
 )
 
 /** `application-<cluster>.conf` overrides [APPLICATION_CONF]. Without a cluster, only [APPLICATION_CONF] is loaded. */
-fun configResources(cluster: String?): List<String> = listOfNotNull(cluster?.takeIf { it.isNotBlank() }?.let { "application-$it.conf" }, APPLICATION_CONF)
+fun configResources(cluster: String?): List<String> = listOfNotNull(
+    cluster?.takeUnless(String::isBlank)?.let { "application-$it.conf" },
+    APPLICATION_CONF,
+)
 
 /** Parses classpath [resources], where earlier resources override later ones. Every resource must exist. */
 fun parseConfigResources(resources: List<String>): Config = resources

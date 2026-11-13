@@ -2,7 +2,7 @@ package no.nav.syfo.bootstrap
 
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.shouldBe
+import io.kotest.matchers.collections.shouldBeEmpty
 import no.nav.syfo.platform.config.applicationConfigWithEnvironment
 import no.nav.syfo.platform.config.configResources
 import org.yaml.snakeyaml.Yaml
@@ -16,7 +16,7 @@ class ClusterSettingsTest :
             }
 
             test("$manifest sets only JVM runtime variables in env, because application.conf does not read the others") {
-                manifestEnvNames(manifest) - runtimeVariables shouldBe emptySet()
+                (manifestEnvNames(manifest) - runtimeVariables).shouldBeEmpty()
             }
         }
     })

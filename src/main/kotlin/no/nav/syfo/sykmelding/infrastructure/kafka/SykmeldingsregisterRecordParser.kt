@@ -11,6 +11,8 @@ import no.nav.syfo.sykmelding.application.SykmeldingsregisterMessage
 import no.nav.syfo.sykmelding.application.SykmeldingsregisterPosition
 import no.nav.syfo.sykmelding.application.SykmeldingsregisterRejection
 import org.apache.kafka.clients.consumer.ConsumerRecord
+import java.time.LocalDate
+import java.time.OffsetDateTime
 import java.util.UUID
 
 private const val CONFIRMED_ANSWER = "JA"
@@ -25,72 +27,85 @@ private sealed interface ParsedKey {
     data class Invalid(val rejection: SykmeldingsregisterRejection) : ParsedKey
 }
 
+/** What the record value says, independent of where the record was read. */
+private sealed interface PayloadResult {
+    data object Tombstone : PayloadResult
+
+    data class Sent(
+        val employee: PersonalIdentificationNumber,
+        val organizationNumber: OrganizationNumber,
+        val sentAt: OffsetDateTime,
+        val maxTom: LocalDate,
+        val narmestelederConfirmed: Boolean,
+    ) : PayloadResult
+
+    data class Invalid(val rejection: SykmeldingsregisterRejection, val fieldPath: String? = null) : PayloadResult
+}
+
 /** Parses and validates one record from the sykmeldingsregister topic into a Kafka-free message or a dead letter. */
 class SykmeldingsregisterRecordParser(
     private val jacksonMapper: ObjectMapper,
 ) {
     fun parse(record: ConsumerRecord<String, String?>): ParsedSykmeldingsregisterRecord {
         val position = SykmeldingsregisterPosition(record.partition(), record.offset())
-        return when (val key = parseKey(record.key())) {
-            is ParsedKey.Valid -> parseMessage(record.value(), key.sykmeldingId, position)
-            is ParsedKey.Invalid -> rejected(position, null, key.rejection)
+        val sykmeldingId = when (val key = parseKey(record.key())) {
+            is ParsedKey.Valid -> key.sykmeldingId
+            is ParsedKey.Invalid -> return ParsedSykmeldingsregisterRecord.Rejected(SykmeldingsregisterDeadLetter(position, null, key.rejection))
+        }
+
+        return when (val payload = parsePayload(record.value(), sykmeldingId)) {
+            PayloadResult.Tombstone -> ParsedSykmeldingsregisterRecord.Accepted(SykmeldingsregisterMessage.Tombstone(sykmeldingId, position))
+            is PayloadResult.Sent -> ParsedSykmeldingsregisterRecord.Accepted(payload.toMessage(sykmeldingId, position))
+            is PayloadResult.Invalid -> ParsedSykmeldingsregisterRecord.Rejected(
+                SykmeldingsregisterDeadLetter(position, sykmeldingId, payload.rejection, payload.fieldPath),
+            )
         }
     }
 
-    private fun parseMessage(
-        value: String?,
-        sykmeldingId: UUID,
-        position: SykmeldingsregisterPosition,
-    ): ParsedSykmeldingsregisterRecord {
-        if (value == null) return ParsedSykmeldingsregisterRecord.Accepted(SykmeldingsregisterMessage.Tombstone(sykmeldingId, position))
-
-        fun malformed(fieldPath: String? = null) = rejected(position, sykmeldingId, SykmeldingsregisterRejection.MALFORMED_PAYLOAD, fieldPath)
+    private fun parsePayload(value: String?, sykmeldingId: UUID): PayloadResult {
+        if (value == null) return PayloadResult.Tombstone
 
         val message = try {
-            jacksonMapper.readValue<SykmeldingsregisterRecordDto?>(value) ?: return malformed()
+            jacksonMapper.readValue<SykmeldingsregisterRecordDto?>(value)
+                ?: return PayloadResult.Invalid(SykmeldingsregisterRejection.MALFORMED_PAYLOAD)
         } catch (e: JsonProcessingException) {
-            return malformed(e.fieldPath())
+            return PayloadResult.Invalid(SykmeldingsregisterRejection.MALFORMED_PAYLOAD, e.fieldPath())
         }
 
-        return validateSentSykmelding(message, sykmeldingId, position)
-    }
-
-    private fun validateSentSykmelding(
-        message: SykmeldingsregisterRecordDto,
-        sykmeldingId: UUID,
-        position: SykmeldingsregisterPosition,
-    ): ParsedSykmeldingsregisterRecord {
-        fun invalid(fieldPath: String) = rejected(position, sykmeldingId, SykmeldingsregisterRejection.INVALID_PAYLOAD, fieldPath)
-
-        if (message.kafkaMetadata.sykmeldingId != sykmeldingId) return invalid("kafkaMetadata.sykmeldingId")
-        if (message.event.sykmeldingId != sykmeldingId) return invalid("event.sykmeldingId")
-        val fnr = message.kafkaMetadata.fnr
-        if (!PersonalIdentificationNumber.isValid(fnr)) return invalid("kafkaMetadata.fnr")
-        val arbeidsgiver = message.event.arbeidsgiver ?: return invalid("event.arbeidsgiver")
-        if (!OrganizationNumber.isValid(arbeidsgiver.orgnummer)) return invalid("event.arbeidsgiver.orgnummer")
-        val perioder = message.sykmelding.sykmeldingsperioder
-        if (perioder.isEmpty() || null in perioder) return invalid("sykmelding.sykmeldingsperioder")
-
-        return ParsedSykmeldingsregisterRecord.Accepted(
-            SykmeldingsregisterMessage.Sent(
-                sykmeldingId = sykmeldingId,
-                position = position,
-                employee = PersonalIdentificationNumber(fnr),
-                organizationNumber = OrganizationNumber(arbeidsgiver.orgnummer),
-                sentAt = message.event.timestamp,
-                maxTom = perioder.filterNotNull().maxOf { it.tom },
-                narmestelederConfirmed = message.event.brukerSvar?.riktigNarmesteLeder?.svar == CONFIRMED_ANSWER,
-            ),
-        )
+        return validateSentSykmelding(message, sykmeldingId)
     }
 }
 
-private fun rejected(
-    position: SykmeldingsregisterPosition,
-    sykmeldingId: UUID?,
-    rejection: SykmeldingsregisterRejection,
-    fieldPath: String? = null,
-): ParsedSykmeldingsregisterRecord = ParsedSykmeldingsregisterRecord.Rejected(SykmeldingsregisterDeadLetter(position, sykmeldingId, rejection, fieldPath))
+private fun validateSentSykmelding(message: SykmeldingsregisterRecordDto, sykmeldingId: UUID): PayloadResult {
+    fun invalid(fieldPath: String) = PayloadResult.Invalid(SykmeldingsregisterRejection.INVALID_PAYLOAD, fieldPath)
+
+    if (message.kafkaMetadata.sykmeldingId != sykmeldingId) return invalid("kafkaMetadata.sykmeldingId")
+    if (message.event.sykmeldingId != sykmeldingId) return invalid("event.sykmeldingId")
+    val fnr = message.kafkaMetadata.fnr
+    if (!PersonalIdentificationNumber.isValid(fnr)) return invalid("kafkaMetadata.fnr")
+    val arbeidsgiver = message.event.arbeidsgiver ?: return invalid("event.arbeidsgiver")
+    if (!OrganizationNumber.isValid(arbeidsgiver.orgnummer)) return invalid("event.arbeidsgiver.orgnummer")
+    val perioder = message.sykmelding.sykmeldingsperioder
+    if (perioder.isEmpty() || null in perioder) return invalid("sykmelding.sykmeldingsperioder")
+
+    return PayloadResult.Sent(
+        employee = PersonalIdentificationNumber(fnr),
+        organizationNumber = OrganizationNumber(arbeidsgiver.orgnummer),
+        sentAt = message.event.timestamp,
+        maxTom = perioder.filterNotNull().maxOf { it.tom },
+        narmestelederConfirmed = message.event.brukerSvar?.riktigNarmesteLeder?.svar == CONFIRMED_ANSWER,
+    )
+}
+
+private fun PayloadResult.Sent.toMessage(sykmeldingId: UUID, position: SykmeldingsregisterPosition) = SykmeldingsregisterMessage.Sent(
+    sykmeldingId = sykmeldingId,
+    position = position,
+    employee = employee,
+    organizationNumber = organizationNumber,
+    sentAt = sentAt,
+    maxTom = maxTom,
+    narmestelederConfirmed = narmestelederConfirmed,
+)
 
 private fun parseKey(key: String?): ParsedKey {
     if (key == null) return ParsedKey.Invalid(SykmeldingsregisterRejection.MISSING_KEY)

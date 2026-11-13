@@ -109,8 +109,7 @@ Health, metrics and Swagger belong to `platform`.
 
 All except the first and third are leader-controlled. Flags:
 `PERSIST_SENDT_SYKMELDING`, `PERSIST_NARMESTELEDER_REGISTER`,
-`PDL_LEESAH_CONSUMER_ENABLED`. Despite its name, `PERSIST_LEESAH_NL_BEHOV`
-controls behov creation from every source, including sendt sykmelding.
+`PDL_LEESAH_CONSUMER_ENABLED`.
 
 ### Background work
 

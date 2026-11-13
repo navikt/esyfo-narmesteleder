@@ -144,8 +144,6 @@ spec:
       value: https://www.nav.no/arbeidsgiver
     - name: PUBLIC_INGRESS_URL
       value: https://narmesteleder-api.nav.no
-    - name: PERSIST_LEESAH_NL_BEHOV
-      value: "true"
     - name: CONSUME_KAFKA_TOPICS
       value: "true"
     - name: DIALOGPORTEN_TASK_ENABLED

@@ -12,12 +12,15 @@ private val LOCAL_CONFIG_RESOURCES = arrayOf(LOCAL_APPLICATION_CONF, APPLICATION
 /**
  * Resolves the config files against [environment] instead of the machine's environment variables.
  * The variables are layered in at the root, because `resolveWith` fails on `${?VAR}` overrides of a default.
+ * [overrides] maps config paths to values and takes precedence over every file.
  */
 fun applicationConfigWithEnvironment(
     environment: Map<String, String>,
     vararg resources: String = arrayOf(APPLICATION_CONF),
+    overrides: Map<String, String> = emptyMap(),
 ): ApplicationConfig = HoconApplicationConfig(
-    parseConfigResources(*resources)
+    ConfigFactory.parseMap(overrides)
+        .withFallback(parseConfigResources(*resources))
         .withFallback(ConfigFactory.parseMap(environment))
         .resolve(ConfigResolveOptions.noSystem()),
 )

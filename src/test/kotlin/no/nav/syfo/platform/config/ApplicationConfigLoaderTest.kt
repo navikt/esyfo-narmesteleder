@@ -17,6 +17,6 @@ class ApplicationConfigLoaderTest :
         }
 
         test("the cluster file overrides application.conf") {
-            parseConfigResources(*configResources("override-test").toTypedArray()).getString("maintenanceTask.interval") shouldBe "from-cluster-file"
+            parseConfigResources(configResources("override-test")).getString("maintenanceTask.interval") shouldBe "from-cluster-file"
         }
     })

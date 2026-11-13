@@ -125,5 +125,5 @@ private val requiredEnvironment = mapOf(
 )
 
 private fun settingsFrom(environment: Map<String, String>, overrides: Map<String, String> = emptyMap()) = ApplicationSettings.from(
-    applicationConfigWithEnvironment(environment, *configResources("prod-gcp").toTypedArray(), overrides = overrides),
+    applicationConfigWithEnvironment(environment, configResources("prod-gcp"), overrides),
 )

@@ -14,14 +14,14 @@ const val APPLICATION_CONF = "application.conf"
  * environment. The cluster name is the only setting read here, because it selects the files.
  */
 fun loadApplicationConfig(): ApplicationConfig = HoconApplicationConfig(
-    parseConfigResources(*configResources(System.getenv("NAIS_CLUSTER_NAME")).toTypedArray()).resolve(),
+    parseConfigResources(configResources(System.getenv("NAIS_CLUSTER_NAME"))).resolve(),
 )
 
 /** `application-<cluster>.conf` overrides [APPLICATION_CONF]. Without a cluster, only [APPLICATION_CONF] is loaded. */
 fun configResources(cluster: String?): List<String> = listOfNotNull(cluster?.takeIf { it.isNotBlank() }?.let { "application-$it.conf" }, APPLICATION_CONF)
 
 /** Parses classpath [resources], where earlier resources override later ones. Every resource must exist. */
-fun parseConfigResources(vararg resources: String): Config = resources
+fun parseConfigResources(resources: List<String>): Config = resources
     .map { ConfigFactory.parseResources(it, ConfigParseOptions.defaults().setAllowMissing(false)) }
     .reduce(Config::withFallback)
 

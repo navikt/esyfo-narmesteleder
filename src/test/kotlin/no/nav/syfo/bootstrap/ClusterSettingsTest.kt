@@ -22,7 +22,7 @@ class ClusterSettingsTest :
     })
 
 internal fun clusterSettings(cluster: String, manifest: String): ApplicationSettings = ApplicationSettings.from(
-    applicationConfigWithEnvironment(naisEnvironment(cluster, manifest), *configResources(cluster).toTypedArray()),
+    applicationConfigWithEnvironment(naisEnvironment(cluster, manifest), configResources(cluster)),
 )
 
 /**

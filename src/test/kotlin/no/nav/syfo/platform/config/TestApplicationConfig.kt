@@ -7,7 +7,7 @@ import io.ktor.server.config.HoconApplicationConfig
 
 const val LOCAL_APPLICATION_CONF = "application-local.conf"
 
-private val LOCAL_CONFIG_RESOURCES = arrayOf(LOCAL_APPLICATION_CONF, APPLICATION_CONF)
+private val LOCAL_CONFIG_RESOURCES = listOf(LOCAL_APPLICATION_CONF, APPLICATION_CONF)
 
 /**
  * Resolves the config files against [environment] instead of the machine's environment variables.
@@ -16,13 +16,13 @@ private val LOCAL_CONFIG_RESOURCES = arrayOf(LOCAL_APPLICATION_CONF, APPLICATION
  */
 fun applicationConfigWithEnvironment(
     environment: Map<String, String>,
-    vararg resources: String = arrayOf(APPLICATION_CONF),
+    resources: List<String> = listOf(APPLICATION_CONF),
     overrides: Map<String, String> = emptyMap(),
 ): ApplicationConfig = HoconApplicationConfig(
     ConfigFactory.parseMap(overrides)
-        .withFallback(parseConfigResources(*resources))
+        .withFallback(parseConfigResources(resources))
         .withFallback(ConfigFactory.parseMap(environment))
         .resolve(ConfigResolveOptions.noSystem()),
 )
 
-fun localApplicationConfig(): ApplicationConfig = applicationConfigWithEnvironment(emptyMap(), *LOCAL_CONFIG_RESOURCES)
+fun localApplicationConfig(): ApplicationConfig = applicationConfigWithEnvironment(emptyMap(), LOCAL_CONFIG_RESOURCES)

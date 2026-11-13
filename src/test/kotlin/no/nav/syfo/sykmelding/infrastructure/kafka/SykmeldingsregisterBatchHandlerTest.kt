@@ -16,7 +16,6 @@ import no.nav.syfo.sykmelding.application.SykmeldingsregisterDeadLetterRepositor
 import no.nav.syfo.sykmelding.application.SykmeldingsregisterMessage
 import no.nav.syfo.sykmelding.application.SyncSykmeldingsregister
 import org.apache.kafka.clients.consumer.ConsumerRecord
-import java.util.UUID
 
 class SykmeldingsregisterBatchHandlerTest :
     FunSpec({
@@ -106,7 +105,6 @@ class SykmeldingsregisterBatchHandlerTest :
         }
     })
 
-private val SYKMELDING_ID: UUID = UUID.fromString("5f0c1e2a-3b4c-4d5e-8f60-718293a4b5c6")
 private const val FNR = "01019012345"
 
 private class Fixture(

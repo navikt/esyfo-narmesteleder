@@ -75,8 +75,18 @@ class SykmeldingsregisterRecordParserTest :
                 InvalidRecord("JSON null", value = "null", reason = "MALFORMED_PAYLOAD"),
                 InvalidRecord(
                     "missing required field",
-                    value = """{"kafkaMetadata":{"fnr":"$FNR"}}""",
+                    value = """{"kafkaMetadata":{"sykmeldingId":"$SYKMELDING_ID","fnr":"$FNR"}}""",
                     reason = "MALFORMED_PAYLOAD: event",
+                ),
+                InvalidRecord(
+                    "kafkaMetadata.sykmeldingId differs from key",
+                    value = sykmeldingsregisterRecordDto(kafkaMetadataSykmeldingId = OTHER_SYKMELDING_ID).toJson(),
+                    reason = "INVALID_PAYLOAD: kafkaMetadata.sykmeldingId",
+                ),
+                InvalidRecord(
+                    "event.sykmeldingId differs from key",
+                    value = sykmeldingsregisterRecordDto(eventSykmeldingId = OTHER_SYKMELDING_ID).toJson(),
+                    reason = "INVALID_PAYLOAD: event.sykmeldingId",
                 ),
                 InvalidRecord(
                     "invalid fnr",
@@ -116,7 +126,7 @@ class SykmeldingsregisterRecordParserTest :
         }
     })
 
-private val SYKMELDING_ID: UUID = UUID.fromString("5f0c1e2a-3b4c-4d5e-8f60-718293a4b5c6")
+private val OTHER_SYKMELDING_ID: UUID = UUID.fromString("9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d")
 private const val FNR = "01019012345"
 private const val ORGNUMMER = "987654321"
 

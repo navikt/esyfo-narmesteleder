@@ -62,6 +62,8 @@ class SykmeldingsregisterRecordParser(
     ): ParsedSykmeldingsregisterRecord {
         fun invalid(fieldPath: String) = rejected(position, sykmeldingId, SykmeldingsregisterRejection.INVALID_PAYLOAD, fieldPath)
 
+        if (message.kafkaMetadata.sykmeldingId != sykmeldingId) return invalid("kafkaMetadata.sykmeldingId")
+        if (message.event.sykmeldingId != sykmeldingId) return invalid("event.sykmeldingId")
         val fnr = message.kafkaMetadata.fnr
         if (!PersonalIdentificationNumber.isValid(fnr)) return invalid("kafkaMetadata.fnr")
         val arbeidsgiver = message.event.arbeidsgiver ?: return invalid("event.arbeidsgiver")

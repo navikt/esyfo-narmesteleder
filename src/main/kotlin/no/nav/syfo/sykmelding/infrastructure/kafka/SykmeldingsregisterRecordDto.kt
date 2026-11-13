@@ -2,6 +2,7 @@ package no.nav.syfo.sykmelding.infrastructure.kafka
 
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.util.UUID
 
 /** The part of a sykmeldingsregister record the parser reads; unknown fields are ignored. */
 data class SykmeldingsregisterRecordDto(
@@ -10,10 +11,12 @@ data class SykmeldingsregisterRecordDto(
     val sykmelding: Sykmelding,
 ) {
     data class KafkaMetadata(
+        val sykmeldingId: UUID,
         val fnr: String,
     )
 
     data class Event(
+        val sykmeldingId: UUID,
         val timestamp: OffsetDateTime,
         val arbeidsgiver: Arbeidsgiver? = null,
         val brukerSvar: UserAnswers? = null,

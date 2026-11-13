@@ -2,31 +2,37 @@ package no.nav.syfo.bootstrap
 
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.shouldBe
 import no.nav.syfo.platform.config.applicationConfigWithEnvironment
+import no.nav.syfo.platform.config.configResources
 import org.yaml.snakeyaml.Yaml
 import java.io.File
 
-class NaisManifestSettingsTest :
+class ClusterSettingsTest :
     FunSpec({
-        listOf("nais/nais-dev.yaml", "nais/nais-prod.yaml").forEach { manifest ->
-            test("$manifest provides every required setting with valid values") {
-                shouldNotThrowAny { settingsFromManifest(manifest) }
+        listOf("dev-gcp" to "nais/nais-dev.yaml", "prod-gcp" to "nais/nais-prod.yaml").forEach { (cluster, manifest) ->
+            test("$cluster gets every required setting with valid values from its config file and $manifest") {
+                shouldNotThrowAny { clusterSettings(cluster, manifest) }
+            }
+
+            test("$manifest sets only JVM runtime variables in env, because application.conf does not read the others") {
+                manifestEnvNames(manifest) - runtimeVariables shouldBe emptySet()
             }
         }
     })
 
-internal fun settingsFromManifest(path: String): ApplicationSettings = ApplicationSettings.from(
-    applicationConfigWithEnvironment(manifestEnvironment(path)),
+internal fun clusterSettings(cluster: String, manifest: String): ApplicationSettings = ApplicationSettings.from(
+    applicationConfigWithEnvironment(naisEnvironment(cluster, manifest), *configResources(cluster).toTypedArray()),
 )
 
 /**
- * The variables NAIS gives the pod: the manifest's `env`, its `envFrom` secrets, the cluster name and those injected by
+ * The variables NAIS gives the pod: the cluster name, the manifest's `envFrom` secrets and those injected by
  * `leaderElection: true`, the Texas annotation, `gcp.sqlInstances`, `valkey` and `kafka`. Injected values are synthetic.
+ * The manifest's `env` is left out, because application settings belong in the cluster's config file.
  */
 @Suppress("UNCHECKED_CAST")
-private fun manifestEnvironment(path: String): Map<String, String> {
-    // `{{image}}` is a deploy-time template, not YAML.
-    val manifest = Yaml().load<Map<String, Any?>>(File(path).readText().replace("{{image}}", "image"))
+private fun naisEnvironment(cluster: String, path: String): Map<String, String> {
+    val manifest = naisManifest(path)
     val metadata = manifest.getValue("metadata") as Map<String, Any?>
     val annotations = metadata["annotations"] as Map<String, Any?>? ?: emptyMap()
     val spec = manifest.getValue("spec") as Map<String, Any?>
@@ -37,14 +43,13 @@ private fun manifestEnvironment(path: String): Map<String, String> {
         .mapNotNull { it["envVarPrefix"]?.toString() }
     val kafka = if (spec["kafka"] != null) kafkaVariables else emptyMap()
     val valkeyInstances = (spec["valkey"] as List<Map<String, Any?>>? ?: emptyList()).map { it.getValue("instance").toString() }
-    val env = (spec["env"] as List<Map<String, Any?>>).associate { it.getValue("name").toString() to it["value"].toString() }
     val leaderElection = if (spec["leaderElection"] == true) {
         mapOf("ELECTOR_PATH" to "elector-path", "ELECTOR_SSE_URL" to "http://elector.example/sse")
     } else {
         emptyMap()
     }
     val secrets = (spec["envFrom"] as List<Map<String, Any?>>).flatMap { secretVariables.getValue(it.getValue("secret").toString()) }
-    return env + leaderElection + texas + secrets.associateWith { "synthetic-secret" } + ("NAIS_CLUSTER_NAME" to "test-cluster") +
+    return leaderElection + texas + secrets.associateWith { "synthetic-secret" } + ("NAIS_CLUSTER_NAME" to cluster) +
         databasePrefixes.flatMap(::databaseVariables) + valkeyInstances.flatMap(::valkeyVariables) + kafka
 }
 
@@ -70,3 +75,14 @@ private val texasVariables = listOf("NAIS_TOKEN_INTROSPECTION_ENDPOINT", "NAIS_T
     .associateWith { "http://texas.example" }
 
 private val secretVariables = mapOf("altinn-subscription-key" to listOf("PDP_SUBSCRIPTION_KEY"))
+
+private val runtimeVariables = setOf("JDK_JAVA_OPTIONS")
+
+@Suppress("UNCHECKED_CAST")
+private fun manifestEnvNames(path: String): Set<String> {
+    val spec = naisManifest(path).getValue("spec") as Map<String, Any?>
+    return (spec["env"] as List<Map<String, Any?>>? ?: emptyList()).map { it.getValue("name").toString() }.toSet()
+}
+
+// `{{image}}` is a deploy-time template, not YAML.
+private fun naisManifest(path: String): Map<String, Any?> = Yaml().load(File(path).readText().replace("{{image}}", "image"))

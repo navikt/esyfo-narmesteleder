@@ -64,7 +64,7 @@ class SykmeldingsregisterRecordParser(
         val arbeidsgiver = message.event.arbeidsgiver ?: return invalid("event.arbeidsgiver")
         if (!OrganizationNumber.isValid(arbeidsgiver.orgnummer)) return invalid("event.arbeidsgiver.orgnummer")
         val perioder = message.sykmelding.sykmeldingsperioder
-        if (perioder.isEmpty() || perioder.any { it == null }) return invalid("sykmelding.sykmeldingsperioder")
+        if (perioder.isEmpty() || null in perioder) return invalid("sykmelding.sykmeldingsperioder")
         val maxTom = perioder.filterNotNull().maxOf { it.tom }
 
         return ParsedSykmeldingsregisterRecord.Accepted(

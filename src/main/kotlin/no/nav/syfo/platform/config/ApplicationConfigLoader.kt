@@ -9,8 +9,16 @@ import kotlin.time.Duration
 
 const val APPLICATION_CONF = "application.conf"
 
-/** Loads [APPLICATION_CONF] and resolves its `${?ENV}` overrides against the process environment. */
-fun loadApplicationConfig(): ApplicationConfig = HoconApplicationConfig(parseConfigResources(APPLICATION_CONF).resolve())
+/**
+ * Loads the config file for the NAIS cluster over [APPLICATION_CONF] and resolves `${?ENV}` overrides against the process
+ * environment. The cluster name is the only setting read here, because it selects the files.
+ */
+fun loadApplicationConfig(): ApplicationConfig = HoconApplicationConfig(
+    parseConfigResources(*configResources(System.getenv("NAIS_CLUSTER_NAME")).toTypedArray()).resolve(),
+)
+
+/** `application-<cluster>.conf` overrides [APPLICATION_CONF]. Without a cluster, only [APPLICATION_CONF] is loaded. */
+fun configResources(cluster: String?): List<String> = listOfNotNull(cluster?.takeIf { it.isNotBlank() }?.let { "application-$it.conf" }, APPLICATION_CONF)
 
 /** Parses classpath [resources], where earlier resources override later ones. Every resource must exist. */
 fun parseConfigResources(vararg resources: String): Config = resources

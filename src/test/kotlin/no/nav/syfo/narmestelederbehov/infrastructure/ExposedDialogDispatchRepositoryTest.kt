@@ -466,39 +466,85 @@ class ExposedDialogDispatchRepositoryTest :
             }
         }
 
-        test("migration cleanup is repeatable and excludes revoked, future and other-organization relations") {
+        fun runDialogDispatchBackfill() {
+            val sql = File("src/main/resources/db/migration/V35__backfill_dialog_dispatch.sql").readText()
+            TestDB.database.connection.use { connection ->
+                connection.createStatement().use { it.execute(sql) }
+                connection.commit()
+            }
+        }
+
+        suspend fun claimAllCreateStarted(): Map<UUID, Boolean?> = buildMap {
+            while (true) {
+                val claim = repository.claim(now, 60.seconds) ?: break
+                put(claim.id.value, repository.load(claim, now)?.createStarted)
+            }
+        }
+
+        test("backfill tracks a possibly attempted CREATE when it fulfils an open behov without a dialog") {
+            val legacy = insertNarmestelederbehov(sykmeldtFnr = "12345678905", orgnummer = "123456789")
+            insertRelation(employeeIdent = legacy.sykmeldtFnr, organizationNumber = legacy.orgnummer)
+            transaction(TestDB.exposedDatabase) { DialogDispatchTable.deleteAll() }
+            val scheduled = insertNarmestelederbehov(sykmeldtFnr = "12345678908", orgnummer = "123456789")
+            insertRelation(employeeIdent = scheduled.sykmeldtFnr, organizationNumber = scheduled.orgnummer)
+            runDialogDispatchBackfill()
+            val createStarted = claimAllCreateStarted()
+            assertSoftly {
+                listOf(legacy, scheduled).forEach {
+                    findStoredNarmestelederbehov(it.id)?.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
+                }
+                createStarted shouldBe mapOf(legacy.id to true, scheduled.id to true)
+            }
+        }
+
+        test("backfill is repeatable, fulfils only behov with an active relation and seeds only unfinished legacy work") {
             val matching = insertNarmestelederbehov(sykmeldtFnr = "12345678901", orgnummer = "123456789", dialogId = UUID.randomUUID())
+            val attention = insertNarmestelederbehov(
+                sykmeldtFnr = "12345678906",
+                orgnummer = "123456789",
+                behovStatus = BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION,
+                dialogId = UUID.randomUUID(),
+            )
             val revokedId = UUID.randomUUID()
             val revoked = insertNarmestelederbehov(sykmeldtFnr = "12345678902", orgnummer = "123456789", avbruttNarmestelederId = revokedId)
             val future = insertNarmestelederbehov(sykmeldtFnr = "12345678903", orgnummer = "123456789")
             val otherOrg = insertNarmestelederbehov(sykmeldtFnr = "12345678904", orgnummer = "123456789")
-            val closed = insertNarmestelederbehov(behovStatus = BehovStatus.BEHOV_FULFILLED)
+            val ended = insertNarmestelederbehov(sykmeldtFnr = "12345678907", orgnummer = "123456789")
+            val fulfilledWithDialog = insertNarmestelederbehov(behovStatus = BehovStatus.BEHOV_FULFILLED, dialogId = UUID.randomUUID())
+            val expiryPending = insertNarmestelederbehov(behovStatus = BehovStatus.BEHOV_EXPIRED, dialogId = UUID.randomUUID())
+            insertNarmestelederbehov(behovStatus = BehovStatus.BEHOV_EXPIRED, dialogId = UUID.randomUUID(), expiredInDialogporten = now)
+            insertNarmestelederbehov(behovStatus = BehovStatus.BEHOV_FULFILLED)
             insertRelation(employeeIdent = matching.sykmeldtFnr, organizationNumber = matching.orgnummer)
+            insertRelation(employeeIdent = attention.sykmeldtFnr, organizationNumber = attention.orgnummer)
             insertRelation(narmestelederId = revokedId, employeeIdent = revoked.sykmeldtFnr, organizationNumber = revoked.orgnummer)
             insertRelation(employeeIdent = future.sykmeldtFnr, organizationNumber = future.orgnummer, activeFrom = OffsetDateTime.now().plusDays(1))
             insertRelation(employeeIdent = otherOrg.sykmeldtFnr, organizationNumber = "999999999")
+            insertRelation(employeeIdent = ended.sykmeldtFnr, organizationNumber = ended.orgnummer, activeTo = OffsetDateTime.now().minusHours(1))
             transaction(TestDB.exposedDatabase) { DialogDispatchTable.deleteAll() }
             transaction(TestDB.exposedDatabase) { scheduleDialogDispatch(matching.id) }
             val acknowledged = requireNotNull(repository.claim(now, 60.seconds))
             repository.finish(acknowledged, DialogDispatchResult.Done, now) shouldBe true
             val duringCutover = insertNarmestelederbehov()
-            val sql = File("docs/operations/dialog-dispatch.sql").readText()
-            repeat(2) {
-                TestDB.database.connection.use { connection ->
-                    connection.createStatement().use { it.execute(sql) }
-                    connection.commit()
-                }
-            }
-            val claimed = buildList { repeat(6) { repository.claim(now, 60.seconds)?.let { add(it) } } }
-            val cutoverState = requireNotNull(repository.load(claimed.single { it.id.value == duringCutover.id }, now))
+            repeat(2) { runDialogDispatchBackfill() }
+            val createStarted = claimAllCreateStarted()
             assertSoftly {
-                findStoredNarmestelederbehov(matching.id)?.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
-                listOf(revoked, future, otherOrg).forEach {
+                listOf(matching, attention).forEach {
+                    findStoredNarmestelederbehov(it.id)?.behovStatus shouldBe BehovStatus.BEHOV_FULFILLED
+                }
+                listOf(revoked, future, otherOrg, ended).forEach {
                     findStoredNarmestelederbehov(it.id)?.behovStatus shouldBe BehovStatus.BEHOV_CREATED
                 }
-                claimed.map { it.id.value }.toSet() shouldBe setOf(matching.id, revoked.id, future.id, otherOrg.id, duringCutover.id)
-                cutoverState.createStarted shouldBe true
-                claimed.any { it.id.value == closed.id } shouldBe false
+                createStarted shouldBe mapOf(
+                    matching.id to false,
+                    attention.id to false,
+                    revoked.id to true,
+                    future.id to true,
+                    otherOrg.id to true,
+                    ended.id to true,
+                    fulfilledWithDialog.id to false,
+                    expiryPending.id to false,
+                    duringCutover.id to true,
+                )
             }
         }
 

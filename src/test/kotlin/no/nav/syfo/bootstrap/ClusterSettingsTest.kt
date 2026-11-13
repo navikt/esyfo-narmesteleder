@@ -97,7 +97,11 @@ private fun naisManifest(path: String): YamlMap = Yaml().load(File(path).readTex
 
 private fun YamlMap.child(key: String): YamlMap = this[key] as? YamlMap ?: emptyMap<Any?, Any?>()
 
-private fun YamlMap.items(key: String): List<YamlMap> = (this[key] as? List<*>).orEmpty().filterIsInstance<YamlMap>()
+private fun YamlMap.items(key: String): List<YamlMap> = when (val value = this[key]) {
+    null -> emptyList()
+    is List<*> -> value.map { it as? YamlMap ?: error("$key has an item that is not a map") }
+    else -> error("$key is not a list")
+}
 
 private fun YamlMap.text(key: String): String = checkNotNull(this[key]) { "$key is missing" }.toString()
 

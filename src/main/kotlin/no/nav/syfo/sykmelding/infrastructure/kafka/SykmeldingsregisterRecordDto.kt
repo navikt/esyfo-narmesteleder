@@ -16,14 +16,14 @@ data class SykmeldingsregisterRecordDto(
     data class Event(
         val timestamp: OffsetDateTime,
         val arbeidsgiver: Arbeidsgiver? = null,
-        val brukerSvar: BrukerSvar? = null,
+        val brukerSvar: UserAnswers? = null,
     )
 
     data class Arbeidsgiver(
         val orgnummer: String,
     )
 
-    data class BrukerSvar(
+    data class UserAnswers(
         val riktigNarmesteLeder: NarmestelederAnswer? = null,
     )
 

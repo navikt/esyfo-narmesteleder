@@ -30,59 +30,75 @@ internal fun clusterSettings(cluster: String, manifest: String): ApplicationSett
  * `leaderElection: true`, the Texas annotation, `gcp.sqlInstances`, `valkey` and `kafka`. Injected values are synthetic.
  * The manifest's `env` is left out, because application settings belong in the cluster's config file.
  */
-@Suppress("UNCHECKED_CAST")
 private fun naisEnvironment(cluster: String, path: String): Map<String, String> {
     val manifest = naisManifest(path)
-    val metadata = manifest.getValue("metadata") as Map<String, Any?>
-    val annotations = metadata["annotations"] as Map<String, Any?>? ?: emptyMap()
-    val spec = manifest.getValue("spec") as Map<String, Any?>
-    val texas = if (annotations["texas.nais.io/enabled"] == "true") texasVariables else emptyMap()
-    val gcp = spec["gcp"] as Map<String, Any?>? ?: emptyMap()
-    val databasePrefixes = (gcp["sqlInstances"] as List<Map<String, Any?>>? ?: emptyList())
-        .flatMap { it["databases"] as List<Map<String, Any?>> }
-        .mapNotNull { it["envVarPrefix"]?.toString() }
-    val kafka = if (spec["kafka"] != null) kafkaVariables else emptyMap()
-    val valkeyInstances = (spec["valkey"] as List<Map<String, Any?>>? ?: emptyList()).map { it.getValue("instance").toString() }
-    val leaderElection = if (spec["leaderElection"] == true) {
-        mapOf("ELECTOR_PATH" to "elector-path", "ELECTOR_SSE_URL" to "http://elector.example/sse")
-    } else {
-        emptyMap()
-    }
-    val secrets = (spec["envFrom"] as List<Map<String, Any?>>).flatMap { secretVariables.getValue(it.getValue("secret").toString()) }
-    return leaderElection + texas + secrets.associateWith { "synthetic-secret" } + ("NAIS_CLUSTER_NAME" to cluster) +
-        databasePrefixes.flatMap(::databaseVariables) + valkeyInstances.flatMap(::valkeyVariables) + kafka
+    val spec = manifest.child("spec")
+    return mapOf("NAIS_CLUSTER_NAME" to cluster) +
+        texasVariables(manifest.child("metadata").child("annotations")) +
+        leaderElectionVariables(spec) +
+        secretVariables(spec) +
+        databaseVariables(spec) +
+        valkeyVariables(spec) +
+        kafkaVariables(spec)
 }
 
-private val kafkaVariables = listOf(
-    "KAFKA_BROKERS",
-    "KAFKA_SCHEMA_REGISTRY",
-    "KAFKA_SCHEMA_REGISTRY_USER",
-    "KAFKA_SCHEMA_REGISTRY_PASSWORD",
-    "KAFKA_TRUSTSTORE_PATH",
-    "KAFKA_KEYSTORE_PATH",
-    "KAFKA_CREDSTORE_PASSWORD",
-).associateWith { "synthetic" }
-
-private fun databaseVariables(prefix: String) = listOf("HOST", "DATABASE", "USERNAME", "PASSWORD", "SSLCERT", "SSLKEY_PK8", "SSLROOTCERT", "SSLMODE").map { "${prefix}_$it" to "synthetic" } +
-    ("${prefix}_PORT" to "5432")
-
-private fun valkeyVariables(instance: String): List<Pair<String, String>> {
-    val suffix = instance.uppercase().replace('-', '_')
-    return listOf("HOST", "USERNAME", "PASSWORD").map { "VALKEY_${it}_$suffix" to "synthetic" } + ("VALKEY_PORT_$suffix" to "26379")
-}
-
-private val texasVariables = listOf("NAIS_TOKEN_INTROSPECTION_ENDPOINT", "NAIS_TOKEN_ENDPOINT", "NAIS_TOKEN_EXCHANGE_ENDPOINT")
-    .associateWith { "http://texas.example" }
-
-private val secretVariables = mapOf("altinn-subscription-key" to listOf("PDP_SUBSCRIPTION_KEY"))
+private val secretKeys = mapOf("altinn-subscription-key" to listOf("PDP_SUBSCRIPTION_KEY"))
 
 private val runtimeVariables = setOf("JDK_JAVA_OPTIONS")
 
-@Suppress("UNCHECKED_CAST")
-private fun manifestEnvNames(path: String): Set<String> {
-    val spec = naisManifest(path).getValue("spec") as Map<String, Any?>
-    return (spec["env"] as List<Map<String, Any?>>? ?: emptyList()).map { it.getValue("name").toString() }.toSet()
+private fun texasVariables(annotations: YamlMap): Map<String, String> = if (annotations["texas.nais.io/enabled"] == "true") {
+    listOf("NAIS_TOKEN_INTROSPECTION_ENDPOINT", "NAIS_TOKEN_ENDPOINT", "NAIS_TOKEN_EXCHANGE_ENDPOINT").associateWith { "http://texas.example" }
+} else {
+    emptyMap()
 }
 
+private fun leaderElectionVariables(spec: YamlMap): Map<String, String> = if (spec["leaderElection"] == true) {
+    mapOf("ELECTOR_PATH" to "elector-path", "ELECTOR_SSE_URL" to "http://elector.example/sse")
+} else {
+    emptyMap()
+}
+
+private fun secretVariables(spec: YamlMap): Map<String, String> = spec.items("envFrom")
+    .flatMap { secretKeys.getValue(it.getValue("secret").toString()) }
+    .associateWith { "synthetic-secret" }
+
+private fun databaseVariables(spec: YamlMap): Map<String, String> = spec.child("gcp").items("sqlInstances")
+    .flatMap { it.items("databases") }
+    .mapNotNull { it["envVarPrefix"]?.toString() }
+    .flatMap { prefix ->
+        listOf("HOST", "DATABASE", "USERNAME", "PASSWORD", "SSLCERT", "SSLKEY_PK8", "SSLROOTCERT", "SSLMODE").map { "${prefix}_$it" to "synthetic" } +
+            ("${prefix}_PORT" to "5432")
+    }
+    .toMap()
+
+private fun valkeyVariables(spec: YamlMap): Map<String, String> = spec.items("valkey")
+    .map { it.getValue("instance").toString().uppercase().replace('-', '_') }
+    .flatMap { suffix -> listOf("HOST", "USERNAME", "PASSWORD").map { "VALKEY_${it}_$suffix" to "synthetic" } + ("VALKEY_PORT_$suffix" to "26379") }
+    .toMap()
+
+private fun kafkaVariables(spec: YamlMap): Map<String, String> = if (spec["kafka"] != null) {
+    listOf(
+        "KAFKA_BROKERS",
+        "KAFKA_SCHEMA_REGISTRY",
+        "KAFKA_SCHEMA_REGISTRY_USER",
+        "KAFKA_SCHEMA_REGISTRY_PASSWORD",
+        "KAFKA_TRUSTSTORE_PATH",
+        "KAFKA_KEYSTORE_PATH",
+        "KAFKA_CREDSTORE_PASSWORD",
+    ).associateWith { "synthetic" }
+} else {
+    emptyMap()
+}
+
+private fun manifestEnvNames(path: String): Set<String> = naisManifest(path).child("spec").items("env").map { it.getValue("name").toString() }.toSet()
+
 // `{{image}}` is a deploy-time template, not YAML.
-private fun naisManifest(path: String): Map<String, Any?> = Yaml().load(File(path).readText().replace("{{image}}", "image"))
+private fun naisManifest(path: String): YamlMap = Yaml().load(File(path).readText().replace("{{image}}", "image"))
+
+@Suppress("UNCHECKED_CAST")
+private fun YamlMap.child(key: String): YamlMap = this[key] as YamlMap? ?: emptyMap()
+
+@Suppress("UNCHECKED_CAST")
+private fun YamlMap.items(key: String): List<YamlMap> = this[key] as List<YamlMap>? ?: emptyList()
+
+private typealias YamlMap = Map<String, Any?>

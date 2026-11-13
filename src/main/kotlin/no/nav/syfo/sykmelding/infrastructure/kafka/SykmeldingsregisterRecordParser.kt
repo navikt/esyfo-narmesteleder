@@ -47,7 +47,7 @@ class SykmeldingsregisterRecordParser(
     private val jacksonMapper: ObjectMapper,
 ) {
     fun parse(record: ConsumerRecord<String, String?>): ParsedSykmeldingsregisterRecord {
-        val position = SykmeldingsregisterPosition(record.partition(), record.offset())
+        val position = record.position()
         val sykmeldingId = when (val key = parseKey(record.key())) {
             is ParsedKey.Valid -> key.sykmeldingId
             is ParsedKey.Invalid -> return ParsedSykmeldingsregisterRecord.Rejected(SykmeldingsregisterDeadLetter(position, null, key.rejection))
@@ -56,9 +56,7 @@ class SykmeldingsregisterRecordParser(
         return when (val payload = parsePayload(record.value(), sykmeldingId)) {
             PayloadResult.Tombstone -> ParsedSykmeldingsregisterRecord.Accepted(SykmeldingsregisterMessage.Tombstone(sykmeldingId, position))
             is PayloadResult.Sent -> ParsedSykmeldingsregisterRecord.Accepted(payload.toMessage(sykmeldingId, position))
-            is PayloadResult.Invalid -> ParsedSykmeldingsregisterRecord.Rejected(
-                SykmeldingsregisterDeadLetter(position, sykmeldingId, payload.rejection, payload.fieldPath),
-            )
+            is PayloadResult.Invalid -> ParsedSykmeldingsregisterRecord.Rejected(payload.toDeadLetter(sykmeldingId, position))
         }
     }
 
@@ -106,6 +104,10 @@ private fun PayloadResult.Sent.toMessage(sykmeldingId: UUID, position: Sykmeldin
     maxTom = maxTom,
     narmestelederConfirmed = narmestelederConfirmed,
 )
+
+private fun PayloadResult.Invalid.toDeadLetter(sykmeldingId: UUID, position: SykmeldingsregisterPosition) = SykmeldingsregisterDeadLetter(position, sykmeldingId, rejection, fieldPath)
+
+private fun ConsumerRecord<*, *>.position() = SykmeldingsregisterPosition(partition(), offset())
 
 private fun parseKey(key: String?): ParsedKey {
     if (key == null) return ParsedKey.Invalid(SykmeldingsregisterRejection.MISSING_KEY)

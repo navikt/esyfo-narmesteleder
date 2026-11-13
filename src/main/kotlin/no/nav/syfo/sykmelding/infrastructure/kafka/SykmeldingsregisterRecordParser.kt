@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.sykmelding.application.SendtSykmeldingKafkaMessage
-import no.nav.syfo.sykmelding.application.SykmeldingsperiodeAGDTO
 import no.nav.syfo.sykmelding.application.SykmeldingsregisterDeadLetter
 import no.nav.syfo.sykmelding.application.SykmeldingsregisterMessage
 import no.nav.syfo.sykmelding.application.SykmeldingsregisterPosition
@@ -65,9 +64,9 @@ class SykmeldingsregisterRecordParser(
         if (!PersonalIdentificationNumber.isValid(fnr)) return invalid("kafkaMetadata.fnr")
         val arbeidsgiver = message.event.arbeidsgiver ?: return invalid("event.arbeidsgiver")
         if (!OrganizationNumber.isValid(arbeidsgiver.orgnummer)) return invalid("event.arbeidsgiver.orgnummer")
-        val perioder: List<SykmeldingsperiodeAGDTO?> = message.sykmelding.sykmeldingsperioder
-        if (perioder.isEmpty() || perioder.any { it == null }) return invalid("sykmelding.sykmeldingsperioder")
-        val maxTom = perioder.filterNotNull().maxOf { it.tom }
+        val perioder = message.sykmelding.sykmeldingsperioder
+        if (perioder.isEmpty() || perioder.containsNull()) return invalid("sykmelding.sykmeldingsperioder")
+        val maxTom = perioder.maxOf { it.tom }
 
         return ParsedSykmeldingsregisterRecord.Accepted(
             SykmeldingsregisterMessage.Sent(
@@ -104,3 +103,9 @@ private fun JsonProcessingException.fieldPath(): String? = (this as? JsonMapping
     ?.path
     ?.joinToString(".") { it.fieldName ?: "[${it.index}]" }
     ?.takeIf { it.isNotEmpty() }
+
+/** Jackson can put null into a list whose element type is non-null. */
+private fun <T : Any> List<T>.containsNull(): Boolean {
+    val elements: List<T?> = this
+    return null in elements
+}

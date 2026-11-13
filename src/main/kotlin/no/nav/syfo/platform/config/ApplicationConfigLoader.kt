@@ -13,11 +13,11 @@ const val APPLICATION_CONF = "application.conf"
 private const val NAIS_CLUSTER_NAME = "NAIS_CLUSTER_NAME"
 
 /**
- * Loads the config file for the NAIS cluster over [APPLICATION_CONF] and resolves `${?ENV}` overrides against the process
- * environment. The cluster name is the only setting read here, because it selects the files.
+ * Loads the config file for [cluster] over [APPLICATION_CONF] and resolves `${?ENV}` overrides against the process
+ * environment. The cluster defaults to NAIS_CLUSTER_NAME, the only variable read directly, because it selects the files.
  */
-fun loadApplicationConfig(): ApplicationConfig = HoconApplicationConfig(
-    parseConfigResources(configResources(System.getenv(NAIS_CLUSTER_NAME))).resolve(),
+fun loadApplicationConfig(cluster: String? = System.getenv(NAIS_CLUSTER_NAME)): ApplicationConfig = HoconApplicationConfig(
+    parseConfigResources(configResources(cluster)).resolve(),
 )
 
 /** `application-<cluster>.conf` overrides [APPLICATION_CONF]. Without a cluster, only [APPLICATION_CONF] is loaded. */

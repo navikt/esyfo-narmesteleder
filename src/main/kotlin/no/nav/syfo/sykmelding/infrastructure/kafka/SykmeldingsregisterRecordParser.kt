@@ -44,7 +44,7 @@ class SykmeldingsregisterRecordParser(
         if (value == null) return ParsedSykmeldingsregisterRecord.Accepted(SykmeldingsregisterMessage.Tombstone(sykmeldingId, position))
 
         val message = try {
-            jacksonMapper.readValue(value, SendtSykmeldingDto::class.java)
+            jacksonMapper.readValue(value, SykmeldingsregisterRecordDto::class.java)
         } catch (e: JsonProcessingException) {
             return rejected(position, sykmeldingId, SykmeldingsregisterRejection.MALFORMED_PAYLOAD, e.fieldPath())
         } ?: return rejected(position, sykmeldingId, SykmeldingsregisterRejection.MALFORMED_PAYLOAD)
@@ -53,7 +53,7 @@ class SykmeldingsregisterRecordParser(
     }
 
     private fun validateSentSykmelding(
-        message: SendtSykmeldingDto,
+        message: SykmeldingsregisterRecordDto,
         sykmeldingId: UUID,
         position: SykmeldingsregisterPosition,
     ): ParsedSykmeldingsregisterRecord {

@@ -4,7 +4,7 @@ import java.time.LocalDate
 import java.time.OffsetDateTime
 
 /** The part of a sykmeldingsregister record the parser reads; unknown fields are ignored. */
-data class SendtSykmeldingDto(
+data class SykmeldingsregisterRecordDto(
     val kafkaMetadata: KafkaMetadataDto,
     val event: EventDto,
     val sykmelding: SykmeldingDto,

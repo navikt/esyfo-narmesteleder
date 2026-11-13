@@ -124,7 +124,7 @@ private fun sendtSykmelding(
     arbeidsgiver: ArbeidsgiverDto? = ArbeidsgiverDto(orgnummer = ORGNUMMER),
     sykmeldingsperioder: List<SykmeldingsperiodeDto?> = listOf(SykmeldingsperiodeDto(tom = LocalDate.parse("2026-11-20"))),
     svar: String? = null,
-) = SendtSykmeldingDto(
+) = SykmeldingsregisterRecordDto(
     kafkaMetadata = KafkaMetadataDto(fnr = fnr),
     event = EventDto(
         timestamp = OffsetDateTime.parse("2026-11-02T10:15:30+01:00"),
@@ -136,7 +136,7 @@ private fun sendtSykmelding(
 
 private fun validJson(): String = sendtSykmelding().json()
 
-private fun SendtSykmeldingDto.json(): String = jacksonMapper().writeValueAsString(this)
+private fun SykmeldingsregisterRecordDto.json(): String = jacksonMapper().writeValueAsString(this)
 
 private fun record(
     partition: Int = 0,

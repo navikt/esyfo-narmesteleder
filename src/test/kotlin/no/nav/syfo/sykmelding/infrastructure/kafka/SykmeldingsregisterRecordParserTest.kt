@@ -2,18 +2,15 @@ package no.nav.syfo.sykmelding.infrastructure.kafka
 
 import io.kotest.assertions.assertSoftly
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.datatest.withData
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.platform.kafka.jacksonMapper
-import no.nav.syfo.sykmelding.application.SENDT_SYKMELDING_TOPIC
 import no.nav.syfo.sykmelding.application.SykmeldingsregisterMessage
 import no.nav.syfo.sykmelding.application.SykmeldingsregisterPosition
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.Arbeidsgiver
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.Sykmeldingsperiode
-import org.apache.kafka.clients.consumer.ConsumerRecord
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -27,13 +24,14 @@ class SykmeldingsregisterRecordParserTest :
                 fnr = FNR,
                 arbeidsgiver = Arbeidsgiver(orgnummer = ORGNUMMER),
                 sykmeldingsperioder = listOf(
-                    Sykmeldingsperiode(tom = LocalDate.parse("2026-11-20")),
                     Sykmeldingsperiode(tom = LocalDate.parse("2026-10-31")),
+                    Sykmeldingsperiode(tom = LocalDate.parse("2026-11-20")),
+                    Sykmeldingsperiode(tom = LocalDate.parse("2026-11-05")),
                 ),
                 svar = "JA",
             )
 
-            parser.parse(record(partition = 2, offset = 41, value = message.toJson())) shouldBe accepted(
+            parser.parse(sykmeldingsregisterRecord(partition = 2, offset = 41, value = message.toJson())) shouldBe accepted(
                 SykmeldingsregisterMessage.Sent(
                     sykmeldingId = SYKMELDING_ID,
                     position = SykmeldingsregisterPosition(partition = 2, offset = 41),
@@ -46,13 +44,9 @@ class SykmeldingsregisterRecordParserTest :
             )
         }
 
-        context("an answer other than JA or no answer is not a confirmation") {
-            withData(
-                nameFn = { it ?: "no answer" },
-                "NEI",
-                null,
-            ) { svar ->
-                val parsed = parser.parse(record(value = sykmeldingsregisterRecordDto(svar = svar).toJson()))
+        listOf("NEI", null).forEach { svar ->
+            test("the answer ${svar ?: "missing"} is not a confirmation") {
+                val parsed = parser.parse(sykmeldingsregisterRecord(value = sykmeldingsregisterRecordDto(svar = svar).toJson()))
 
                 parsed.shouldBeInstanceOf<ParsedSykmeldingsregisterRecord.Accepted>()
                     .message.shouldBeInstanceOf<SykmeldingsregisterMessage.Sent>()
@@ -61,60 +55,60 @@ class SykmeldingsregisterRecordParserTest :
         }
 
         test("a record without value is a tombstone") {
-            parser.parse(record(partition = 1, offset = 9, value = null)) shouldBe accepted(
+            parser.parse(sykmeldingsregisterRecord(partition = 1, offset = 9, value = null)) shouldBe accepted(
                 SykmeldingsregisterMessage.Tombstone(SYKMELDING_ID, SykmeldingsregisterPosition(partition = 1, offset = 9)),
             )
         }
 
-        context("an invalid record is rejected with its reason, without payload values") {
-            withData(
-                nameFn = { it.name },
-                InvalidRecord("missing key", key = null, value = validJson(), sykmeldingId = null, reason = "MISSING_KEY"),
-                InvalidRecord("invalid key", key = "not-a-uuid", value = validJson(), sykmeldingId = null, reason = "INVALID_KEY"),
-                InvalidRecord("not JSON", value = "{$FNR", reason = "MALFORMED_PAYLOAD"),
-                InvalidRecord("JSON null", value = "null", reason = "MALFORMED_PAYLOAD"),
-                InvalidRecord(
-                    "missing required field",
-                    value = """{"kafkaMetadata":{"sykmeldingId":"$SYKMELDING_ID","fnr":"$FNR"}}""",
-                    reason = "MALFORMED_PAYLOAD: event",
-                ),
-                InvalidRecord(
-                    "kafkaMetadata.sykmeldingId differs from key",
-                    value = sykmeldingsregisterRecordDto(kafkaMetadataSykmeldingId = OTHER_SYKMELDING_ID).toJson(),
-                    reason = "INVALID_PAYLOAD: kafkaMetadata.sykmeldingId",
-                ),
-                InvalidRecord(
-                    "event.sykmeldingId differs from key",
-                    value = sykmeldingsregisterRecordDto(eventSykmeldingId = OTHER_SYKMELDING_ID).toJson(),
-                    reason = "INVALID_PAYLOAD: event.sykmeldingId",
-                ),
-                InvalidRecord(
-                    "invalid fnr",
-                    value = sykmeldingsregisterRecordDto(fnr = "1234567890X").toJson(),
-                    reason = "INVALID_PAYLOAD: kafkaMetadata.fnr",
-                ),
-                InvalidRecord(
-                    "missing arbeidsgiver",
-                    value = sykmeldingsregisterRecordDto(arbeidsgiver = null).toJson(),
-                    reason = "INVALID_PAYLOAD: event.arbeidsgiver",
-                ),
-                InvalidRecord(
-                    "invalid orgnummer",
-                    value = sykmeldingsregisterRecordDto(arbeidsgiver = Arbeidsgiver(orgnummer = "12345")).toJson(),
-                    reason = "INVALID_PAYLOAD: event.arbeidsgiver.orgnummer",
-                ),
-                InvalidRecord(
-                    "no perioder",
-                    value = sykmeldingsregisterRecordDto(sykmeldingsperioder = emptyList()).toJson(),
-                    reason = "INVALID_PAYLOAD: sykmelding.sykmeldingsperioder",
-                ),
-                InvalidRecord(
-                    "null periode",
-                    value = sykmeldingsregisterRecordDto(sykmeldingsperioder = listOf(Sykmeldingsperiode(tom = LocalDate.parse("2026-11-20")), null)).toJson(),
-                    reason = "INVALID_PAYLOAD: sykmelding.sykmeldingsperioder",
-                ),
-            ) { invalid ->
-                val parsed = parser.parse(record(partition = 0, offset = 5, key = invalid.key, value = invalid.value))
+        listOf(
+            InvalidRecord("missing key", key = null, value = validJson(), sykmeldingId = null, reason = "MISSING_KEY"),
+            InvalidRecord("invalid key", key = "not-a-uuid", value = validJson(), sykmeldingId = null, reason = "INVALID_KEY"),
+            InvalidRecord("non-canonical key", key = "1-1-1-1-1", value = validJson(), sykmeldingId = null, reason = "INVALID_KEY"),
+            InvalidRecord("not JSON", value = "{$FNR", reason = "MALFORMED_PAYLOAD"),
+            InvalidRecord("JSON null", value = "null", reason = "MALFORMED_PAYLOAD"),
+            InvalidRecord(
+                "missing required field",
+                value = """{"kafkaMetadata":{"sykmeldingId":"$SYKMELDING_ID","fnr":"$FNR"}}""",
+                reason = "MALFORMED_PAYLOAD: event",
+            ),
+            InvalidRecord(
+                "kafkaMetadata.sykmeldingId differs from key",
+                value = sykmeldingsregisterRecordDto(kafkaMetadataSykmeldingId = OTHER_SYKMELDING_ID).toJson(),
+                reason = "INVALID_PAYLOAD: kafkaMetadata.sykmeldingId",
+            ),
+            InvalidRecord(
+                "event.sykmeldingId differs from key",
+                value = sykmeldingsregisterRecordDto(eventSykmeldingId = OTHER_SYKMELDING_ID).toJson(),
+                reason = "INVALID_PAYLOAD: event.sykmeldingId",
+            ),
+            InvalidRecord(
+                "invalid fnr",
+                value = sykmeldingsregisterRecordDto(fnr = "1234567890X").toJson(),
+                reason = "INVALID_PAYLOAD: kafkaMetadata.fnr",
+            ),
+            InvalidRecord(
+                "missing arbeidsgiver",
+                value = sykmeldingsregisterRecordDto(arbeidsgiver = null).toJson(),
+                reason = "INVALID_PAYLOAD: event.arbeidsgiver",
+            ),
+            InvalidRecord(
+                "invalid orgnummer",
+                value = sykmeldingsregisterRecordDto(arbeidsgiver = Arbeidsgiver(orgnummer = "12345")).toJson(),
+                reason = "INVALID_PAYLOAD: event.arbeidsgiver.orgnummer",
+            ),
+            InvalidRecord(
+                "no perioder",
+                value = sykmeldingsregisterRecordDto(sykmeldingsperioder = emptyList()).toJson(),
+                reason = "INVALID_PAYLOAD: sykmelding.sykmeldingsperioder",
+            ),
+            InvalidRecord(
+                "null periode",
+                value = sykmeldingsregisterRecordDto(sykmeldingsperioder = listOf(Sykmeldingsperiode(tom = LocalDate.parse("2026-11-20")), null)).toJson(),
+                reason = "INVALID_PAYLOAD: sykmelding.sykmeldingsperioder",
+            ),
+        ).forEach { invalid ->
+            test("a record with ${invalid.name} is rejected with its reason, without payload values") {
+                val parsed = parser.parse(sykmeldingsregisterRecord(partition = 0, offset = 5, key = invalid.key, value = invalid.value))
 
                 val deadLetter = parsed.shouldBeInstanceOf<ParsedSykmeldingsregisterRecord.Rejected>().deadLetter
                 assertSoftly {
@@ -141,10 +135,3 @@ private data class InvalidRecord(
 private fun accepted(message: SykmeldingsregisterMessage) = ParsedSykmeldingsregisterRecord.Accepted(message)
 
 private fun validJson(): String = sykmeldingsregisterRecordDto(fnr = FNR).toJson()
-
-private fun record(
-    partition: Int = 0,
-    offset: Long = 0,
-    key: String? = SYKMELDING_ID.toString(),
-    value: String?,
-) = ConsumerRecord<String, String?>(SENDT_SYKMELDING_TOPIC, partition, offset, key, value)

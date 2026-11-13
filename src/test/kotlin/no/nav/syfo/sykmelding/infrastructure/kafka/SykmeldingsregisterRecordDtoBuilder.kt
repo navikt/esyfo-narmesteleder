@@ -1,6 +1,7 @@
 package no.nav.syfo.sykmelding.infrastructure.kafka
 
 import no.nav.syfo.platform.kafka.jacksonMapper
+import no.nav.syfo.sykmelding.application.SENDT_SYKMELDING_TOPIC
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.Arbeidsgiver
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.Event
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.KafkaMetadata
@@ -8,6 +9,7 @@ import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.Sykmelding
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.Sykmeldingsperiode
 import no.nav.syfo.sykmelding.infrastructure.kafka.SykmeldingsregisterRecordDto.UserAnswers
+import org.apache.kafka.clients.consumer.ConsumerRecord
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -34,3 +36,10 @@ fun sykmeldingsregisterRecordDto(
 )
 
 fun SykmeldingsregisterRecordDto.toJson(): String = jacksonMapper().writeValueAsString(this)
+
+fun sykmeldingsregisterRecord(
+    partition: Int = 0,
+    offset: Long = 0,
+    key: String? = SYKMELDING_ID.toString(),
+    value: String?,
+) = ConsumerRecord<String, String?>(SENDT_SYKMELDING_TOPIC, partition, offset, key, value)

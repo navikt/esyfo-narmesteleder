@@ -19,7 +19,8 @@ private val recordDeadLettered = applicationEvent<SykmeldingsregisterDeadLetter>
         "partition" to { it.position.partition },
         "offset" to { it.position.offset },
         "sykmelding_id" to { it.sykmeldingId?.toString() },
-        "reason" to { it.reason },
+        "reason" to { it.rejection.name },
+        "field" to { it.fieldPath },
     ),
 )
 

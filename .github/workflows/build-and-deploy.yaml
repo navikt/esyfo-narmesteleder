@@ -38,13 +38,10 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    strategy:
-      matrix:
-        cluster: [dev-gcp, prod-gcp]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: nais/deploy/actions/deploy@d003bddf74ce5b96fa3056ae60bd4b9b3bbc89ef # v3
         env:
           TEAM: team-esyfo
-          CLUSTER: ${{ matrix.cluster }}
+          CLUSTER: prod-gcp
           RESOURCE: nais/alerts.yaml

@@ -65,19 +65,23 @@ WHERE NOT EXISTS (SELECT 1 FROM dialog_dispatch q WHERE q.behov_id = b.id)
    approved database access. Do not export identifiers, payloads or names to
    monitoring. There is no automatic CREATE replay for unidentified closed
    historical dialogs.
-4. Verify `team-esyfo`'s Slack destination in Nais Console. Enable repository
-   variable `DIALOG_DISPATCH_ALERTS_ENABLED=true` to deploy the checked-in
-   rules through CI, in both environments. Rule tests must pass before this.
-   Confirm the rules are loaded in Nais Console/Alertmanager before enabling
-   delivery. Sending a test notification requires separate approval.
-5. In dev, enable `DIALOG_DISPATCH_ENABLED`, verify outcomes and lease
-   recovery, and measure latency/downstream load. Enable prod only after
-   those checks, including service-owner GET read-back after an applied expiry
-   has passed. A 404/410 must remain retryable, not inferred as success.
-   Initially there is one active reconciliation per pod:
-   10 attempts or 20 seconds per run, a 20-second per-attempt limit, a
-   60-second lease and five-second safety margin. Waiting/retries consume
-   these budgets. Polling waits five seconds between completed runs.
+4. In dev, enable `DIALOG_DISPATCH_ENABLED`, verify outcomes and lease
+   recovery, and measure latency/downstream load. Include service-owner GET
+   read-back after an applied expiry has passed. A 404/410 must remain
+   retryable, not inferred as success. CI does not deploy the alert rules to
+   dev; evaluate the expressions in `nais/alerts.yaml` against dev metrics in
+   Prometheus or Grafana instead.
+5. Before enabling prod, verify `team-esyfo`'s Slack destination in Nais
+   Console and enable repository variable `DIALOG_DISPATCH_ALERTS_ENABLED=true`,
+   so that the next build on `main` deploys the checked-in rules to prod. Rule
+   tests must pass before this. Confirm the rules are loaded in Nais
+   Console/Alertmanager, then enable `DIALOG_DISPATCH_ENABLED` in prod.
+   Sending a test notification requires separate approval.
+
+Initially there is one active reconciliation per pod: 10 attempts or 20
+seconds per run, a 20-second per-attempt limit, a 60-second lease and
+five-second safety margin. Waiting/retries consume these budgets. Polling
+waits five seconds between completed runs.
 
 ## Alert response and replay
 

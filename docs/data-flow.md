@@ -107,9 +107,7 @@ Health, metrics and Swagger belong to `platform`.
 | source Leesah | `PersistNarmestelederRegisterFromLeesahConsumer` | Store the local relation register and republish. |
 | `pdl.leesah-v1` | `PdlLeesahConsumer` | Refresh names in the relation-person projection on `NAVN_V1`. Updates existing persons only. |
 
-All except the first and third are leader-controlled. Flags:
-`PERSIST_SENDT_SYKMELDING`, `PERSIST_NARMESTELEDER_REGISTER`,
-`PDL_LEESAH_CONSUMER_ENABLED`.
+All except the first and third are leader-controlled.
 
 ### Background work
 
@@ -123,7 +121,7 @@ All except the first and third are leader-controlled. Flags:
 | Every pod, claim/lease | `employment-check-seed` loop | `SeedNarmestelederrelasjonEmploymentChecksUseCase` creates work for active relations. |
 | Every pod, claim/lease | `employment-check` loop | `CheckNarmestelederrelasjonEmploymentUseCase`, see [Revoke](#revoke-a-relation). |
 
-Background tasks have no feature flags. Claims and leases:
+Consumers and tasks have no feature flags. Claims and leases:
 [ADR-0003](adr/ADR-0003-planlagt-bakgrunnsarbeid-bruker-claim-med-lease.md).
 
 ## Write flows

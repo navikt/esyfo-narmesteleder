@@ -56,7 +56,6 @@ internal fun ApplicationConfig.kafkaSettings() = KafkaSettings(
         KafkaSecurity.Plaintext
     },
     commitOnAllErrors = flag("kafka.commitOnAllErrors"),
-    shouldConsumeTopics = flag("kafka.consumeTopics"),
 )
 
 internal fun ApplicationConfig.texasSettings() = TexasSettings(

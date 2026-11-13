@@ -43,7 +43,6 @@ import kotlin.time.Duration.Companion.seconds
 class PdlLeesahConsumer(
     private val kafkaConsumerFactory: () -> KafkaConsumer<String, Personhendelse>,
     private val scope: CoroutineScope,
-    private val enabled: Boolean,
     private val updateRelationPersonNames: UpdateRelationPersonNamesUseCase,
     private val pollDuration: Duration = Duration.ofSeconds(POLL_DURATION_SECONDS),
     private val retryDelaySeconds: Long = CONSUMER_JOB_DELAY_SECONDS,
@@ -54,14 +53,12 @@ class PdlLeesahConsumer(
     constructor(
         kafkaConsumer: KafkaConsumer<String, Personhendelse>,
         scope: CoroutineScope,
-        enabled: Boolean,
         updateRelationPersonNames: UpdateRelationPersonNamesUseCase,
         pollDuration: Duration = Duration.ofSeconds(POLL_DURATION_SECONDS),
         retryDelaySeconds: Long = CONSUMER_JOB_DELAY_SECONDS,
     ) : this(
         kafkaConsumerFactory = { kafkaConsumer },
         scope = scope,
-        enabled = enabled,
         updateRelationPersonNames = updateRelationPersonNames,
         pollDuration = pollDuration,
         retryDelaySeconds = retryDelaySeconds,
@@ -73,13 +70,6 @@ class PdlLeesahConsumer(
     private var kafkaConsumer: KafkaConsumer<String, Personhendelse>? = null
 
     override fun listen() {
-        // Defensive guard: RunningTasks already avoids creating this consumer when disabled,
-        // but keep the check here for direct usage in tests or other callers outside that setup.
-        if (!enabled) {
-            logger.info("PDL Leesah consumer is disabled, not starting consumer for {}", PDL_LEESAH_TOPIC)
-            return
-        }
-
         if (job?.isActive == true) {
             logger.info("{} consumer for {} is already running", this::class.simpleName, PDL_LEESAH_TOPIC)
             return

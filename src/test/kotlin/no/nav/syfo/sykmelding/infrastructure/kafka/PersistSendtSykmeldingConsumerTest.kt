@@ -39,7 +39,6 @@ class PersistSendtSykmeldingConsumerTest :
             jacksonMapper = jacksonMapper(),
             kafkaConsumer = kafkaConsumer,
             scope = CoroutineScope(EmptyCoroutineContext),
-            enabled = true,
         )
 
         beforeTest {
@@ -86,7 +85,6 @@ class PersistSendtSykmeldingConsumerTest :
                 jacksonMapper = jacksonMapper(),
                 kafkaConsumer = kafkaConsumer,
                 scope = scope,
-                enabled = true,
             )
             batchConsumer.commitOnAllErrors = true
             val record = ConsumerRecord<String, String?>(

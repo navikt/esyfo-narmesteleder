@@ -43,7 +43,6 @@ class PersistNarmestelederRegisterFromLeesahConsumerTest :
             jacksonMapper = objectMapper,
             kafkaConsumer = kafkaConsumer,
             scope = CoroutineScope(EmptyCoroutineContext),
-            enabled = true,
         ).also { it.commitOnAllErrors = commitOnAllErrors }
 
         fun json(message: NarmestelederLeesahKafkaMessage) = objectMapper.writeValueAsString(message)

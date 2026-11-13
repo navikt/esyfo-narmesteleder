@@ -150,19 +150,11 @@ spec:
       value: https://www.ekstern.dev.nav.no/arbeidsgiver
     - name: PUBLIC_INGRESS_URL
       value: https://narmesteleder-api.ekstern.dev.nav.no
-    - name: CONSUME_KAFKA_TOPICS
-      value: "true"
     - name: DIALOGPORTEN_UPDATE_POLLING_DELAY
       value: "10m"
-    - name: PERSIST_SENDT_SYKMELDING
-      value: "true"
     - name: MAINTENANCE_TASK_DELAY
       value: "10m"
     - name: DAYS_AFTER_TOM_TO_EXPIRE_BEHOVS
       value: "16"
-    - name: PERSIST_NARMESTELEDER_REGISTER
-      value: "true"
-    - name: PDL_LEESAH_CONSUMER_ENABLED
-      value: "true"
   envFrom:
     - secret: altinn-subscription-key

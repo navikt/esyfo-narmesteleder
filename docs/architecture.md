@@ -141,8 +141,18 @@ configure provider `skipWhen`. Routes accepting user or system tokens use
 
 ## Configuration and dependency injection
 
-- `main()` reads `application.conf` into `ApplicationSettings` once and calls
-  `Application.bootstrap(settings)`. Settings are grouped per owner and read by
+- `main()` reads the config files into `ApplicationSettings` once and calls
+  `Application.bootstrap(settings)`. `application-<cluster>.conf`, selected by
+  `NAIS_CLUSTER_NAME`, overrides `application.conf`; without a cluster only
+  `application.conf` is read, and an unknown cluster stops startup.
+- Place settings by kind: secrets and values NAIS injects (database, Kafka,
+  Texas, Valkey, leader election) as `${?ENV}` in `application.conf`;
+  non-secret values that differ per environment (URLs, scopes, intervals) and
+  feature switches in `application-dev-gcp.conf` and
+  `application-prod-gcp.conf`. Manifest `env:` holds only runtime settings such
+  as `JDK_JAVA_OPTIONS`. `ClusterSettingsTest` builds `ApplicationSettings`
+  for each cluster.
+- Settings are grouped per owner and read by
   `*SettingsReader.kt` in `bootstrap`; startup fails on the first missing or
   invalid key without logging its value. Capabilities receive only their own
   settings as parameters, never through Koin or `ApplicationSettings`.
@@ -161,7 +171,8 @@ configure provider `skipWhen`. Routes accepting user or system tokens use
 - Module order matters because routes resolve eagerly: organisasjonstilgang,
   relasjon, behov, statistikk, sykmelding; then consumers and tasks.
 - `DependencyInjectionTest` verifies the full graph and fails on duplicate
-  definitions. `NaisManifestSettingsTest` checks that the manifests resolve.
+  definitions. `ClusterSettingsTest` checks that each cluster's settings
+  resolve and that manifest `env:` holds no application settings.
 
 ## Testing
 

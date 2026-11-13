@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.sykmelding.application.SendtSykmeldingKafkaMessage
+import no.nav.syfo.sykmelding.application.SykmeldingsperiodeAGDTO
 import no.nav.syfo.sykmelding.application.SykmeldingsregisterDeadLetter
 import no.nav.syfo.sykmelding.application.SykmeldingsregisterMessage
 import no.nav.syfo.sykmelding.application.SykmeldingsregisterPosition
@@ -64,8 +65,9 @@ class SykmeldingsregisterRecordParser(
         if (!PersonalIdentificationNumber.isValid(fnr)) return invalid("kafkaMetadata.fnr")
         val arbeidsgiver = message.event.arbeidsgiver ?: return invalid("event.arbeidsgiver")
         if (!OrganizationNumber.isValid(arbeidsgiver.orgnummer)) return invalid("event.arbeidsgiver.orgnummer")
-        val maxTom = message.sykmelding.sykmeldingsperioder.maxOfOrNull { it.tom }
-            ?: return invalid("sykmelding.sykmeldingsperioder")
+        val perioder: List<SykmeldingsperiodeAGDTO?> = message.sykmelding.sykmeldingsperioder
+        if (perioder.isEmpty() || perioder.any { it == null }) return invalid("sykmelding.sykmeldingsperioder")
+        val maxTom = perioder.filterNotNull().maxOf { it.tom }
 
         return ParsedSykmeldingsregisterRecord.Accepted(
             SykmeldingsregisterMessage.Sent(

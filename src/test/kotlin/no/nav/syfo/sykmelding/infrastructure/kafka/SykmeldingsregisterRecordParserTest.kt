@@ -1,5 +1,6 @@
 package no.nav.syfo.sykmelding.infrastructure.kafka
 
+import com.fasterxml.jackson.databind.node.ArrayNode
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.datatest.withData
 import io.kotest.matchers.shouldBe
@@ -101,6 +102,11 @@ class SykmeldingsregisterRecordParserTest :
                     }.json(),
                     reason = "INVALID_PAYLOAD: sykmelding.sykmeldingsperioder",
                 ),
+                InvalidRecord(
+                    "null periode",
+                    value = validJsonWithNullPeriode(),
+                    reason = "INVALID_PAYLOAD: sykmelding.sykmeldingsperioder",
+                ),
             ) { invalid ->
                 val parsed = parser.parse(record(partition = 0, offset = 5, key = invalid.key, value = invalid.value))
 
@@ -128,6 +134,12 @@ private fun accepted(message: SykmeldingsregisterMessage) = ParsedSykmeldingsreg
 private fun validJson(): String = defaultSendtSykmeldingMessage(fnr = FNR).json()
 
 private fun SendtSykmeldingKafkaMessage.json(): String = jacksonMapper().writeValueAsString(this)
+
+private fun validJsonWithNullPeriode(): String {
+    val tree = jacksonMapper().readTree(validJson())
+    (tree.at("/sykmelding/sykmeldingsperioder") as ArrayNode).addNull()
+    return tree.toString()
+}
 
 private fun record(
     partition: Int = 0,

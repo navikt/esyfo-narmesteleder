@@ -31,7 +31,6 @@ import no.nav.syfo.narmestelederbehov.application.DialogExpiryObservation
 import no.nav.syfo.narmestelederbehov.application.DispatchNarmestelederbehovDialogUseCase
 import no.nav.syfo.narmestelederbehov.application.EmployeePersonLookup
 import no.nav.syfo.narmestelederbehov.application.EmployeePersonLookupResult
-import no.nav.syfo.narmestelederbehov.application.MarkDialogCreatedResult
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialog
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreation
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogCreationResult
@@ -113,9 +112,9 @@ class ExposedDialogDispatchRepositoryTest :
             val created = lifecycle.create(newBehov()).shouldBeInstanceOf<CreateBehovResult.Created>()
             val stored = requireNotNull(findStoredNarmestelederbehov(created.id.value))
             repository.claim(stored.created.plusSeconds(9), 60.seconds).shouldBeNull()
-            val claim = requireNotNull(repository.claim(now, 60.seconds))
+            val claim = requireNotNull(repository.claim(stored.created.plusSeconds(10), 60.seconds))
             claim.id shouldBe created.id
-            repository.finish(claim, DialogDispatchResult.Done, now) shouldBe true
+            repository.finish(claim, DialogDispatchResult.Done, stored.created.plusSeconds(10)) shouldBe true
 
             assertSoftly {
                 lifecycle.create(newBehov()) shouldBe CreateBehovResult.AlreadyExists
@@ -138,41 +137,33 @@ class ExposedDialogDispatchRepositoryTest :
             }
         }
 
-        listOf(BehovStatus.DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION, BehovStatus.BEHOV_FULFILLED).forEach { status ->
-            test("a writer setting $status preserves a concurrently committed claim without transaction retries") {
-                val row = insertNarmestelederbehov(created = now.minusSeconds(30))
-                val worker = Executors.newSingleThreadExecutor()
-                val writerDatabase = Database.connect(
-                    getNewConnection = { TestDB.database.connection },
-                    databaseConfig = DatabaseConfig {
-                        defaultIsolationLevel = Connection.TRANSACTION_REPEATABLE_READ
-                        defaultMaxAttempts = 1
-                    },
-                )
-                try {
-                    val schedule: JdbcTransaction.(UUID) -> Unit = { id ->
-                        worker.submit<Boolean> {
-                            runBlocking { requireNotNull(repository.claim(now, 60.seconds)).id.value == id }
-                        }.get(10, TimeUnit.SECONDS) shouldBe true
-                        scheduleDialogDispatch(id)
-                    }
-                    val id = NarmestelederbehovId(row.id)
-                    if (status == BehovStatus.BEHOV_FULFILLED) {
-                        ExposedNarmestelederbehovFulfillmentRepository(writerDatabase, schedule).markFulfilled(id)
-                    } else {
-                        ExposedNarmestelederbehovLifecycleRepository(writerDatabase, schedule)
-                            .markDialogCreated(id, UUID.randomUUID(), null) shouldBe MarkDialogCreatedResult.Marked
-                    }
-                    repository.claim(now, 60.seconds).shouldBeNull()
-                    val reclaimed = requireNotNull(repository.claim(now.plusSeconds(61), 60.seconds))
-                    assertSoftly {
-                        reclaimed.revision shouldBe 2L
-                        requireNotNull(repository.load(reclaimed, now.plusSeconds(61))).status shouldBe status
-                    }
-                } finally {
-                    worker.shutdownNow()
-                    TransactionManager.closeAndUnregister(writerDatabase)
+        test("a fulfillment writer preserves a concurrently committed claim without transaction retries") {
+            val row = insertNarmestelederbehov(created = now.minusSeconds(30))
+            val worker = Executors.newSingleThreadExecutor()
+            val writerDatabase = Database.connect(
+                getNewConnection = { TestDB.database.connection },
+                databaseConfig = DatabaseConfig {
+                    defaultIsolationLevel = Connection.TRANSACTION_REPEATABLE_READ
+                    defaultMaxAttempts = 1
+                },
+            )
+            try {
+                val schedule: JdbcTransaction.(UUID) -> Unit = { id ->
+                    worker.submit<Boolean> {
+                        runBlocking { requireNotNull(repository.claim(now, 60.seconds)).id.value == id }
+                    }.get(10, TimeUnit.SECONDS) shouldBe true
+                    scheduleDialogDispatch(id)
                 }
+                ExposedNarmestelederbehovFulfillmentRepository(writerDatabase, schedule).markFulfilled(NarmestelederbehovId(row.id))
+                repository.claim(now, 60.seconds).shouldBeNull()
+                val reclaimed = requireNotNull(repository.claim(now.plusSeconds(61), 60.seconds))
+                assertSoftly {
+                    reclaimed.revision shouldBe 2L
+                    requireNotNull(repository.load(reclaimed, now.plusSeconds(61))).status shouldBe BehovStatus.BEHOV_FULFILLED
+                }
+            } finally {
+                worker.shutdownNow()
+                TransactionManager.closeAndUnregister(writerDatabase)
             }
         }
 

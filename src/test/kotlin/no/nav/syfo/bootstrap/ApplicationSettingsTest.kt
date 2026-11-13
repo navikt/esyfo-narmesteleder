@@ -20,6 +20,10 @@ class ApplicationSettingsTest :
             }
         }
 
+        test("the dialog dispatch worker is disabled unless NAIS enables it") {
+            settingsFrom(requiredEnvironment).narmestelederbehov.dialogDispatch.enabled shouldBe false
+        }
+
         test("startup names the missing setting") {
             val failure = shouldThrow<IllegalStateException> { settingsFrom(requiredEnvironment - "PDL_BASE_URL") }
 
@@ -28,7 +32,7 @@ class ApplicationSettingsTest :
 
         listOf(
             Triple("DAYS_AFTER_TOM_TO_EXPIRE_BEHOVS", "sixteen", "narmestelederbehov.expiry.daysAfterTom is not a whole number"),
-            Triple("DIALOGPORTEN_UPDATE_POLLING_DELAY", "soon", "narmestelederbehov.dialogporten.updatePollingInterval is not a valid duration"),
+            Triple("PERSON_ENRICHMENT_TASK_DELAY", "soon", "narmestelederrelasjon.personEnrichmentTask.interval is not a valid duration"),
         ).forEach { (variable, value, problem) ->
             test("startup reports an invalid $variable without the value") {
                 val failure = shouldThrow<IllegalStateException> { settingsFrom(requiredEnvironment + (variable to value)) }

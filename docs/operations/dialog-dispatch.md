@@ -1,21 +1,17 @@
 # Dialogporten dispatch: cutover and recovery
 
-This is preparation for the final worker-only cutover. The dispatcher
-and metrics are not wired into startup yet; inline and leader-only
-delivery still run. The one-time backfill runs as Flyway migration V35 when
-this binary starts; see [Backfill (V35)](#backfill-v35). Do not replay or
-deploy these alerts until the cutover binary is deployed. The remaining
-procedures describe that binary, which also adds the gated alert-deployment job.
+Dispatch names the delivery component; `reconcile(claim)` converges a claimed
+behov's latest state with Dialogporten. There is one control row per behov,
+not an immutable command per outgoing request.
 
 The worker is disabled in dev/prod until a controlled cutover.
-`DIALOGPORTEN_TASK_ENABLED` no longer starts dialog delivery; it retains its
-existing person-enrichment gating. `DIALOG_DISPATCH_ENABLED` starts the
-claim worker on every pod. Do not enable it while an old binary can deliver.
+`DIALOG_DISPATCH_ENABLED` starts the claim worker on every pod and is the only
+switch for dialog delivery. Do not enable it while an old binary can deliver.
 
 ## Backfill (V35)
 
 Flyway migration `V35__backfill_dialog_dispatch.sql` runs once, in the
-migration transaction, when this binary starts:
+migration transaction, when the first binary that contains it starts:
 
 - Cleanup fulfils open behov (`BEHOV_CREATED` or
   `DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION`) that already have an active,
@@ -33,10 +29,11 @@ migration transaction, when this binary starts:
 
 A migration is safe here because every behov writer has scheduled its own
 changes in the same transaction since V33, so the backfill covers only rows
-last changed before that, and this binary does not start the worker. The legacy
-tasks keep completing fulfilled behov that have a dialog; work for fulfilled
-behov without a dialog waits for the worker. A relation that the projection has
-not consumed at deploy time leaves its behov open for normal fulfillment.
+last changed before that, and the worker stays disabled until the cutover.
+Before the cutover binary, the legacy tasks keep completing fulfilled behov
+that have a dialog; other scheduled work waits for the worker. A relation
+that the projection has not consumed at deploy time leaves its behov open for
+normal fulfillment.
 If V35 fails, for example as a deadlock victim, Flyway rolls it back in full
 and the pod fails startup; old pods keep serving and the next start retries.
 V35 is not a routine producer or replay command.
@@ -68,19 +65,23 @@ WHERE NOT EXISTS (SELECT 1 FROM dialog_dispatch q WHERE q.behov_id = b.id)
    approved database access. Do not export identifiers, payloads or names to
    monitoring. There is no automatic CREATE replay for unidentified closed
    historical dialogs.
-4. Verify `team-esyfo`'s Slack destination in Nais Console. Enable repository
-   variable `DIALOG_DISPATCH_ALERTS_ENABLED=true` to deploy the checked-in
-   rules through CI, in both environments. Rule tests must pass before this.
-   Confirm the rules are loaded in Nais Console/Alertmanager before enabling
-   delivery. Sending a test notification requires separate approval.
-5. In dev, enable `DIALOG_DISPATCH_ENABLED`, verify outcomes and lease
-   recovery, and measure latency/downstream load. Enable prod only after
-   those checks, including service-owner GET read-back after an applied expiry
-   has passed. A 404/410 must remain retryable, not inferred as success.
-   Initially there is one active reconciliation per pod:
-   10 attempts or 20 seconds per run, a 20-second per-attempt limit, a
-   60-second lease and five-second safety margin. Waiting/retries consume
-   these budgets. Polling waits five seconds between completed runs.
+4. In dev, enable `DIALOG_DISPATCH_ENABLED`, verify outcomes and lease
+   recovery, and measure latency/downstream load. Include service-owner GET
+   read-back after an applied expiry has passed. A 404/410 must remain
+   retryable, not inferred as success. CI does not deploy the alert rules to
+   dev; evaluate the expressions in `nais/alerts.yaml` against dev metrics in
+   Prometheus or Grafana instead.
+5. Before enabling prod, verify `team-esyfo`'s Slack destination in Nais
+   Console and enable repository variable `DIALOG_DISPATCH_ALERTS_ENABLED=true`,
+   so that the next build on `main` deploys the checked-in rules to prod. Rule
+   tests must pass before this. Confirm the rules are loaded in Nais
+   Console/Alertmanager, then enable `DIALOG_DISPATCH_ENABLED` in prod.
+   Sending a test notification requires separate approval.
+
+Initially there is one active reconciliation per pod: 10 attempts or 20
+seconds per run, a 20-second per-attempt limit, a 60-second lease and
+five-second safety margin. Waiting/retries consume these budgets. Polling
+waits five seconds between completed runs.
 
 ## Alert response and replay
 

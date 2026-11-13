@@ -6,4 +6,5 @@ import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.DialogportenSe
 data class NarmestelederbehovSettings(
     val expiry: NarmestelederbehovExpirySettings,
     val dialogporten: DialogportenSettings,
+    val dialogDispatch: DialogDispatchLoopSettings,
 )

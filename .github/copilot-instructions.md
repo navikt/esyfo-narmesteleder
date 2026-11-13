@@ -16,6 +16,7 @@ Read a doc only when the task matches, and only the relevant section
 - Running locally, Docker Compose, dev tokens: `docs/development.md`
 - Adding or moving code; modules, ports, errors, transactions: `docs/architecture.md`
 - Changing an endpoint, Kafka consumer/producer or scheduled task: `docs/data-flow.md`
+- Dialogporten delivery, backfill, alerts, replay or rollback: `docs/operations/dialog-dispatch.md`
 - Adding or changing logs: `docs/logging.md`
 - Changing the Leesah topic payload: `docs/kafka/syfo-narmesteleder-leesah.md` and its schema
 - System-user 403 or Altinn PDP: `docs/system-user-access-diagnostics.md`
@@ -59,6 +60,11 @@ Read a doc only when the task matches, and only the relevant section
   or `authenticateAzureAd(role)` (role granted via Nais inbound access), never
   Ktor's `authenticate`. Keep use-case
   authorization checks. Declare unauthenticated endpoints in `publicRoutes { }`.
+- Call `scheduleDialogDispatch` in the same transaction as every behov change
+  that affects its dialog; no database trigger does it. Only the
+  `dialog-dispatch` worker calls Dialogporten.
+- Run `sh scripts/check-dialog-alerts.sh` (Docker and Ruby) after changing the
+  dialog dispatch Prometheus rules.
 - Add Prometheus metrics for business operations.
 - Update `docs/data-flow.md` and this file when a change makes them inaccurate.
   Put drafts in `.local-notes/`.

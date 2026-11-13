@@ -26,4 +26,5 @@ fun Application.bootstrap(settings: ApplicationSettings, koinModules: List<Modul
     configureKafkaConsumers(settings.kafka)
     configureBackgroundTasks()
     configureEmploymentChecks()
+    configureDialogDispatch(settings.narmestelederbehov.dialogDispatch)
 }

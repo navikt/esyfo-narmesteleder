@@ -13,7 +13,6 @@ sealed interface DialogCompletion {
 }
 
 sealed interface DialogportenCompletionAttempt {
-    data object Completed : DialogportenCompletionAttempt
-    data object Failed : DialogportenCompletionAttempt
+    data object Pending : DialogportenCompletionAttempt
     data object NotApplicable : DialogportenCompletionAttempt
 }

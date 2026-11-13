@@ -2,37 +2,27 @@ package no.nav.syfo.narmestelederbehov.infrastructure
 
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
-import no.nav.syfo.narmestelederbehov.application.CompleteFulfilledNarmestelederbehovDialogsRepository
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovFromLeesahRepository
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovRepository
-import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
-import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovDialogReference
 import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.Narmestelederbehov
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.platform.database.ioTransaction
-import org.jetbrains.exposed.v1.core.SortOrder
-import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.core.isNotNull
-import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.update
 import java.sql.Connection
-import java.time.Instant
-import java.time.ZoneOffset
 import java.util.UUID
 
 class ExposedNarmestelederbehovFulfillmentRepository(
     private val database: Database,
     private val scheduleDispatch: JdbcTransaction.(UUID) -> Unit = JdbcTransaction::scheduleDialogDispatch,
 ) : FulfillNarmestelederbehovRepository,
-    FulfillNarmestelederbehovFromLeesahRepository,
-    CompleteFulfilledNarmestelederbehovDialogsRepository {
+    FulfillNarmestelederbehovFromLeesahRepository {
     override suspend fun findForFulfillment(id: NarmestelederbehovId): Narmestelederbehov? = database.ioTransaction {
         NarmestelederbehovTable
             .select(
@@ -66,26 +56,5 @@ class ExposedNarmestelederbehovFulfillmentRepository(
             scheduleDispatch(id.value)
         }
         MarkFulfilledResult.Marked(id, row[NarmestelederbehovTable.dialogId])
-    }
-
-    override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult = database.ioTransaction(transactionIsolation = Connection.TRANSACTION_READ_COMMITTED) {
-        if (recordCompletedDialog(id)) {
-            scheduleDispatch(id.value)
-            MarkDialogCompletedResult.Marked
-        } else {
-            MarkDialogCompletedResult.NotFulfilled
-        }
-    }
-
-    override suspend fun findFulfilledDialogs(createdBefore: Instant): List<NarmestelederbehovDialogReference> = database.ioTransaction {
-        NarmestelederbehovTable.select(NarmestelederbehovTable.id, NarmestelederbehovTable.dialogId)
-            .where {
-                (NarmestelederbehovTable.behovStatus eq BehovStatus.BEHOV_FULFILLED) and
-                    (NarmestelederbehovTable.created less createdBefore.atOffset(ZoneOffset.UTC)) and
-                    NarmestelederbehovTable.dialogId.isNotNull()
-            }
-            .orderBy(NarmestelederbehovTable.created to SortOrder.ASC)
-            .limit(100)
-            .map { NarmestelederbehovDialogReference(NarmestelederbehovId(it[NarmestelederbehovTable.id]), requireNotNull(it[NarmestelederbehovTable.dialogId])) }
     }
 }

@@ -1,11 +1,9 @@
 package no.nav.syfo.narmestelederbehov.application
 
-import kotlinx.coroutines.CancellationException
 import no.nav.esyfo.observability.Event
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.platform.observability.applicationLogger
-import no.nav.syfo.platform.observability.logEvent
 import org.slf4j.event.Level
 
 interface FulfillNarmestelederbehovFromLeesahRepository {
@@ -13,18 +11,15 @@ interface FulfillNarmestelederbehovFromLeesahRepository {
     suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId>
 
     suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult
-
-    suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult
 }
 
 /**
  * Fulfills the employee's open behov when Leesah reports an active narmesteleder registered outside this service.
- * The status is saved before the Dialogporten dialog is completed, so a dialog failure leaves the behov fulfilled.
+ * The repository schedules reconciliation atomically; delivery is owned by the background worker.
  */
 class FulfillNarmestelederbehovFromLeesahUseCase(
     private val behovRepository: FulfillNarmestelederbehovFromLeesahRepository,
     private val metrics: LeesahFulfillmentMetrics,
-    private val dialog: NarmestelederbehovDialog,
 ) {
     suspend fun execute(employee: Employee) {
         behovRepository.findOpenFor(employee).forEach { fulfill(it) }
@@ -34,33 +29,10 @@ class FulfillNarmestelederbehovFromLeesahUseCase(
         when (val marked = behovRepository.markFulfilled(id)) {
             is MarkFulfilledResult.Marked -> {
                 metrics.recordFulfilled()
-                val completion = completeDialog(marked)
+                val completion = if (marked.dialogId == null) DialogportenCompletionAttempt.NotApplicable else DialogportenCompletionAttempt.Pending
                 logger.event(fulfilledFromLeesah, FulfilledFromLeesah(id, completion))
             }
             MarkFulfilledResult.Missing -> Unit
-        }
-    }
-
-    private suspend fun completeDialog(marked: MarkFulfilledResult.Marked): DialogportenCompletionAttempt {
-        val dialogId = marked.dialogId ?: return DialogportenCompletionAttempt.NotApplicable
-        when (val completion = dialog.complete(dialogId)) {
-            DialogCompletion.Completed -> Unit
-            is DialogCompletion.Unavailable -> {
-                logger.logEvent(dialogportenCompletionFailed, marked.id.value.toString(), upstreamFailure = completion.failure)
-                return DialogportenCompletionAttempt.Failed
-            }
-        }
-        return try {
-            when (behovRepository.markDialogCompleted(marked.id)) {
-                MarkDialogCompletedResult.Marked,
-                MarkDialogCompletedResult.NotFulfilled,
-                -> DialogportenCompletionAttempt.Completed
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.logEvent(dialogStatusPersistenceFailed, marked.id.value.toString(), cause = e)
-            DialogportenCompletionAttempt.Failed
         }
     }
 
@@ -80,8 +52,7 @@ private val fulfilledFromLeesah = Event<FulfilledFromLeesah>(
         "behov_id" to { it.id.value.toString() },
         "dialogporten_completion" to {
             when (it.dialogCompletion) {
-                DialogportenCompletionAttempt.Completed -> "COMPLETED"
-                DialogportenCompletionAttempt.Failed -> "FAILED"
+                DialogportenCompletionAttempt.Pending -> "PENDING"
                 DialogportenCompletionAttempt.NotApplicable -> "NOT_APPLICABLE"
             }
         },

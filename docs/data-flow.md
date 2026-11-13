@@ -113,16 +113,18 @@ All except the first and third are leader-controlled.
 
 | Runs on | Entry point | Processing |
 | --- | --- | --- |
-| Leader | `SendDialogTask` | `SendPendingNarmestelederbehovDialogsUseCase` creates missing dialogs. |
-| Leader | `UpdateDialogTask` | `CompleteFulfilledNarmestelederbehovDialogsUseCase` retries completion; `ExpireNarmestelederbehovDialogsUseCase` expires dialogs for closed needs. |
 | Leader | `ExpireNarmestelederbehovTask` | `ExpireNarmestelederbehovUseCase` expires needs after the sykmelding-based cutoff. |
 | Leader | `PersonEnrichmentTask` | `EnrichPendingRelationPersonsUseCase` fills missing names from PDL. |
 | Leader | `DeleteOldSykmeldingerTask` | `DeleteOldSykmeldinger` applies sykmelding retention. |
 | Every pod, claim/lease | `employment-check-seed` loop | `SeedNarmestelederrelasjonEmploymentChecksUseCase` creates work for active relations. |
 | Every pod, claim/lease | `employment-check` loop | `CheckNarmestelederrelasjonEmploymentUseCase`, see [Revoke](#revoke-a-relation). |
+| Every pod, claim/lease | `dialog-dispatch` loop | `DispatchNarmestelederbehovDialogUseCase` creates, completes or expires dialogs from the latest behov state. |
 
-Consumers and tasks have no feature flags. Claims and leases:
+The only feature flag is `DIALOG_DISPATCH_ENABLED`, which starts the
+`dialog-dispatch` loop. It is off in dev and prod until the controlled cutover;
+until then no dialogs are delivered. Claims and leases:
 [ADR-0003](adr/ADR-0003-planlagt-bakgrunnsarbeid-bruker-claim-med-lease.md).
+Cutover, alerts and recovery: [runbook](operations/dialog-dispatch.md).
 
 ## Write flows
 
@@ -137,9 +139,10 @@ Consumers and tasks have no feature flags. Claims and leases:
    `juridiskOrgnummer`, not Aareg. A partial unique index stops concurrent
    duplicates. Without a main organization the need gets an error status and no
    dialog.
-4. Resolve person details, create the Dialogporten dialog and store its state.
-   The behov id is the `idempotentKey`, so `SendDialogTask` retries reuse a
-   dialog that was created but not stored.
+4. Schedule dialog work in the same transaction. The `dialog-dispatch` loop
+   resolves person details, creates the Dialogporten dialog and stores its
+   state. The behov id is the `idempotentKey`, so a retry reuses a dialog that
+   was created but not stored.
 
 ### Fulfil a need
 
@@ -147,8 +150,9 @@ Consumers and tasks have no feature flags. Claims and leases:
 2. Establish the relation: validate active sykmelding, employment and persons
    (Dinesykmeldte, Aareg, PDL), then publish to
    `teamsykmelding.syfo-narmesteleder`.
-3. Mark the need fulfilled, then complete its dialog. `UpdateDialogTask`
-   retries a failed completion.
+3. Mark the need fulfilled and schedule dialog work in the same transaction.
+   The response does not wait for Dialogporten; the `dialog-dispatch` loop
+   completes the dialog and retries failures.
 
 Publishing comes before marking fulfilled; a failure stops later steps.
 
@@ -191,12 +195,11 @@ Contract and status mapping: [syfo-narmesteleder-leesah](kafka/syfo-narmestelede
 
 `LeesahNLKafkaConsumer`:
 
-- an active relation fulfils the employee's open needs and completes their
-  dialogs;
+- an active relation fulfils the employee's open needs and schedules their
+  dialog work in the same transaction;
 - deactivation by employee, manager, personnel manager or LPS requests a new
   need; employment-ended and new-manager deactivations do not. It is skipped
-  when behov persistence is off, a need is open or there is no active
-  sykmelding.
+  when a need is open or there is no active sykmelding.
 
 ### Relation-person names
 
@@ -219,7 +222,8 @@ events (`UpdateRelationPersonNamesUseCase`) or through `PersonEnrichmentTask`.
 - Transactions never include Kafka or HTTP calls.
 - Establishment and revocation publish first; the register follows through
   Leesah.
-- Dialogporten can lag behind behov state; background tasks repair it.
+- Dialogporten lags behind behov state. Every behov writer schedules dialog
+  work in its own transaction, and the `dialog-dispatch` loop reconciles it.
 
 ## Planned: source Leesah decommissioning
 

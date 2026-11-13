@@ -9,12 +9,15 @@ import kotlin.time.Duration
 
 const val APPLICATION_CONF = "application.conf"
 
+/** Injected by NAIS on every pod, e.g. `dev-gcp`. */
+private const val NAIS_CLUSTER_NAME = "NAIS_CLUSTER_NAME"
+
 /**
  * Loads the config file for the NAIS cluster over [APPLICATION_CONF] and resolves `${?ENV}` overrides against the process
  * environment. The cluster name is the only setting read here, because it selects the files.
  */
 fun loadApplicationConfig(): ApplicationConfig = HoconApplicationConfig(
-    parseConfigResources(configResources(System.getenv("NAIS_CLUSTER_NAME"))).resolve(),
+    parseConfigResources(configResources(System.getenv(NAIS_CLUSTER_NAME))).resolve(),
 )
 
 /** `application-<cluster>.conf` overrides [APPLICATION_CONF]. Without a cluster, only [APPLICATION_CONF] is loaded. */

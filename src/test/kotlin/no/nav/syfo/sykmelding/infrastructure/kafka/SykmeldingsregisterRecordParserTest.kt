@@ -19,7 +19,9 @@ class SykmeldingsregisterRecordParserTest :
         val parser = SykmeldingsregisterRecordParser(jacksonMapper())
 
         test("maps a sent sykmelding to a Kafka-free message with its position") {
-            val message = sendtSykmelding(
+            val message = sykmeldingsregisterRecordDto(
+                fnr = FNR,
+                arbeidsgiver = ArbeidsgiverDto(orgnummer = ORGNUMMER),
                 sykmeldingsperioder = listOf(
                     SykmeldingsperiodeDto(tom = LocalDate.parse("2026-11-20")),
                     SykmeldingsperiodeDto(tom = LocalDate.parse("2026-10-31")),
@@ -27,7 +29,7 @@ class SykmeldingsregisterRecordParserTest :
                 svar = "JA",
             )
 
-            parser.parse(record(partition = 2, offset = 41, value = message.json())) shouldBe accepted(
+            parser.parse(record(partition = 2, offset = 41, value = message.toJson())) shouldBe accepted(
                 SykmeldingsregisterMessage.Sent(
                     sykmeldingId = SYKMELDING_ID,
                     position = SykmeldingsregisterPosition(partition = 2, offset = 41),
@@ -46,7 +48,7 @@ class SykmeldingsregisterRecordParserTest :
                 "NEI",
                 null,
             ) { svar ->
-                val parsed = parser.parse(record(value = sendtSykmelding(svar = svar).json()))
+                val parsed = parser.parse(record(value = sykmeldingsregisterRecordDto(svar = svar).toJson()))
 
                 ((parsed as ParsedSykmeldingsregisterRecord.Accepted).message as SykmeldingsregisterMessage.Sent)
                     .narmestelederConfirmed shouldBe false
@@ -72,27 +74,27 @@ class SykmeldingsregisterRecordParserTest :
                 ),
                 InvalidRecord(
                     "invalid fnr",
-                    value = sendtSykmelding(fnr = "1234567890X").json(),
+                    value = sykmeldingsregisterRecordDto(fnr = "1234567890X").toJson(),
                     reason = "INVALID_PAYLOAD: kafkaMetadata.fnr",
                 ),
                 InvalidRecord(
                     "missing arbeidsgiver",
-                    value = sendtSykmelding(arbeidsgiver = null).json(),
+                    value = sykmeldingsregisterRecordDto(arbeidsgiver = null).toJson(),
                     reason = "INVALID_PAYLOAD: event.arbeidsgiver",
                 ),
                 InvalidRecord(
                     "invalid orgnummer",
-                    value = sendtSykmelding(arbeidsgiver = ArbeidsgiverDto(orgnummer = "12345")).json(),
+                    value = sykmeldingsregisterRecordDto(arbeidsgiver = ArbeidsgiverDto(orgnummer = "12345")).toJson(),
                     reason = "INVALID_PAYLOAD: event.arbeidsgiver.orgnummer",
                 ),
                 InvalidRecord(
                     "no perioder",
-                    value = sendtSykmelding(sykmeldingsperioder = emptyList()).json(),
+                    value = sykmeldingsregisterRecordDto(sykmeldingsperioder = emptyList()).toJson(),
                     reason = "INVALID_PAYLOAD: sykmelding.sykmeldingsperioder",
                 ),
                 InvalidRecord(
                     "null periode",
-                    value = sendtSykmelding(sykmeldingsperioder = listOf(SykmeldingsperiodeDto(tom = LocalDate.parse("2026-11-20")), null)).json(),
+                    value = sykmeldingsregisterRecordDto(sykmeldingsperioder = listOf(SykmeldingsperiodeDto(tom = LocalDate.parse("2026-11-20")), null)).toJson(),
                     reason = "INVALID_PAYLOAD: sykmelding.sykmeldingsperioder",
                 ),
             ) { invalid ->
@@ -119,24 +121,7 @@ private data class InvalidRecord(
 
 private fun accepted(message: SykmeldingsregisterMessage) = ParsedSykmeldingsregisterRecord.Accepted(message)
 
-private fun sendtSykmelding(
-    fnr: String = FNR,
-    arbeidsgiver: ArbeidsgiverDto? = ArbeidsgiverDto(orgnummer = ORGNUMMER),
-    sykmeldingsperioder: List<SykmeldingsperiodeDto?> = listOf(SykmeldingsperiodeDto(tom = LocalDate.parse("2026-11-20"))),
-    svar: String? = null,
-) = SykmeldingsregisterRecordDto(
-    kafkaMetadata = KafkaMetadataDto(fnr = fnr),
-    event = EventDto(
-        timestamp = OffsetDateTime.parse("2026-11-02T10:15:30+01:00"),
-        arbeidsgiver = arbeidsgiver,
-        brukerSvar = BrukerSvarDto(riktigNarmesteLeder = svar?.let { RiktigNarmesteLederDto(svar = it) }),
-    ),
-    sykmelding = SykmeldingDto(sykmeldingsperioder = sykmeldingsperioder),
-)
-
-private fun validJson(): String = sendtSykmelding().json()
-
-private fun SykmeldingsregisterRecordDto.json(): String = jacksonMapper().writeValueAsString(this)
+private fun validJson(): String = sykmeldingsregisterRecordDto(fnr = FNR).toJson()
 
 private fun record(
     partition: Int = 0,

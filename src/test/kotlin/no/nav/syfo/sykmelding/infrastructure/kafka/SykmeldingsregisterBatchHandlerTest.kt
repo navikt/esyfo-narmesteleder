@@ -6,11 +6,9 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
-import no.nav.syfo.defaultSendtSykmeldingMessage
 import no.nav.syfo.platform.kafka.jacksonMapper
 import no.nav.syfo.platform.observability.withProductionLogs
 import no.nav.syfo.sykmelding.application.SENDT_SYKMELDING_TOPIC
-import no.nav.syfo.sykmelding.application.SendtSykmeldingKafkaMessage
 import no.nav.syfo.sykmelding.application.SykmeldingsregisterDeadLetter
 import no.nav.syfo.sykmelding.application.SykmeldingsregisterDeadLetterRepository
 import no.nav.syfo.sykmelding.application.SykmeldingsregisterMessage
@@ -137,9 +135,7 @@ private class Fixture(
     fun counter(name: String): Double = meterRegistry.find(name).counters().sumOf { it.count() }
 }
 
-private fun validJson(): String = defaultSendtSykmeldingMessage(fnr = FNR).json()
-
-private fun SendtSykmeldingKafkaMessage.json(): String = jacksonMapper().writeValueAsString(this)
+private fun validJson(): String = sykmeldingsregisterRecordDto(fnr = FNR).toJson()
 
 private fun record(
     partition: Int = 0,

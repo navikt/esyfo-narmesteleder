@@ -59,7 +59,7 @@ private fun leaderElectionVariables(spec: YamlMap): Map<String, String> = if (sp
 }
 
 private fun secretVariables(spec: YamlMap): Map<String, String> = spec.items("envFrom")
-    .flatMap { secretKeys.getValue(it.getValue("secret").toString()) }
+    .flatMap { secretKeys.getValue(it.text("secret")) }
     .associateWith { "synthetic-secret" }
 
 private fun databaseVariables(spec: YamlMap): Map<String, String> = spec.child("gcp").items("sqlInstances")
@@ -72,7 +72,7 @@ private fun databaseVariables(spec: YamlMap): Map<String, String> = spec.child("
     .toMap()
 
 private fun valkeyVariables(spec: YamlMap): Map<String, String> = spec.items("valkey")
-    .map { it.getValue("instance").toString().uppercase().replace('-', '_') }
+    .map { it.text("instance").uppercase().replace('-', '_') }
     .flatMap { suffix -> listOf("HOST", "USERNAME", "PASSWORD").map { "VALKEY_${it}_$suffix" to "synthetic" } + ("VALKEY_PORT_$suffix" to "26379") }
     .toMap()
 
@@ -90,15 +90,15 @@ private fun kafkaVariables(spec: YamlMap): Map<String, String> = if (spec["kafka
     emptyMap()
 }
 
-private fun manifestEnvNames(path: String): Set<String> = naisManifest(path).child("spec").items("env").map { it.getValue("name").toString() }.toSet()
+private fun manifestEnvNames(path: String): Set<String> = naisManifest(path).child("spec").items("env").map { it.text("name") }.toSet()
 
 // `{{image}}` is a deploy-time template, not YAML.
 private fun naisManifest(path: String): YamlMap = Yaml().load(File(path).readText().replace("{{image}}", "image"))
 
-@Suppress("UNCHECKED_CAST")
-private fun YamlMap.child(key: String): YamlMap = this[key] as YamlMap? ?: emptyMap()
+private fun YamlMap.child(key: String): YamlMap = this[key] as? YamlMap ?: emptyMap<Any?, Any?>()
 
-@Suppress("UNCHECKED_CAST")
-private fun YamlMap.items(key: String): List<YamlMap> = this[key] as List<YamlMap>? ?: emptyList()
+private fun YamlMap.items(key: String): List<YamlMap> = (this[key] as? List<*>).orEmpty().filterIsInstance<YamlMap>()
 
-private typealias YamlMap = Map<String, Any?>
+private fun YamlMap.text(key: String): String = checkNotNull(this[key]) { "$key is missing" }.toString()
+
+private typealias YamlMap = Map<*, *>

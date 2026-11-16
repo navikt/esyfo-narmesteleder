@@ -1,5 +1,6 @@
 package no.nav.syfo.narmestelederbehov
 
+import io.kotest.assertions.assertSoftly
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -11,8 +12,8 @@ import io.mockk.mockk
 import no.nav.syfo.bootstrap.platformModule
 import no.nav.syfo.integration.pdl.PdlClient
 import no.nav.syfo.narmestelederbehov.api.NARMESTELEDERBEHOV_PATH
+import no.nav.syfo.narmestelederbehov.application.DispatchNarmestelederbehovDialogUseCase
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpirySettings
-import no.nav.syfo.narmestelederbehov.infrastructure.UpdateDialogTask
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.DialogportenSettings
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.client.DialogportenClient
 import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjon
@@ -30,7 +31,7 @@ import java.sql.Connection
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
-import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 class NarmestelederbehovModuleTest :
     FunSpec({
@@ -47,14 +48,15 @@ class NarmestelederbehovModuleTest :
                         baseUrl = "https://altinn.example.invalid",
                         publicIngressUrl = "https://api.example.invalid",
                         frontendBaseUrl = "https://frontend.example.invalid",
-                        updatePollingInterval = 7.minutes,
                     ),
+                    dialogDispatch = DialogDispatchLoopSettings(enabled = false, interval = 5.seconds),
                 )
                 val externalDependencies = module {
                     single { ApplicationState() }
                     single<DatabaseInterface> { UnusedDatabase }
                     single<Database> { mockk() }
                     single { Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC) }
+                    single<kotlin.time.Clock> { kotlin.time.Clock.System }
                     single<TexasHttpClient> { mockk() }
                     single<OrganizationAccess> { mockk() }
                     single<PdlClient> { mockk() }
@@ -66,19 +68,21 @@ class NarmestelederbehovModuleTest :
                     application {
                         platformModule(listOf(externalDependencies))
                         narmestelederbehovModule(settings)
-                        get<UpdateDialogTask>() shouldNotBe null
+                        get<DispatchNarmestelederbehovDialogUseCase>() shouldNotBe null
                     }
 
                     // Missing tokens are rejected before clients or repositories are used.
                     val publicResponse = client.request("$API_V1_PATH$path") {
                         method = httpMethod
                     }
-                    publicResponse.status shouldBe HttpStatusCode.Unauthorized
-                    publicResponse.headers[NAV_CALL_ID_HEADER] shouldNotBe null
-
-                    client.request("$INTERNAL_API_V1_PATH$path") {
+                    val internalResponse = client.request("$INTERNAL_API_V1_PATH$path") {
                         method = httpMethod
-                    }.status shouldBe HttpStatusCode.NotFound
+                    }
+                    assertSoftly {
+                        publicResponse.status shouldBe HttpStatusCode.Unauthorized
+                        publicResponse.headers[NAV_CALL_ID_HEADER] shouldNotBe null
+                        internalResponse.status shouldBe HttpStatusCode.NotFound
+                    }
                 }
             }
         }

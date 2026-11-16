@@ -1,6 +1,7 @@
 package no.nav.syfo.narmestelederbehov.infrastructure.kafka
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import io.kotest.assertions.assertSoftly
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -9,7 +10,6 @@ import kotlinx.coroutines.CoroutineScope
 import no.nav.syfo.integration.aareg.AAREG
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovFromLeesahRepository
 import no.nav.syfo.narmestelederbehov.application.FulfillNarmestelederbehovFromLeesahUseCase
-import no.nav.syfo.narmestelederbehov.application.MarkDialogCompletedResult
 import no.nav.syfo.narmestelederbehov.application.MarkFulfilledResult
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
@@ -41,11 +41,13 @@ class LeesahNLKafkaConsumerLoggingTest :
 
             val event = logs.logs.single()
             val fields = event.fields
-            fields["event_type"] shouldBe "kafka_consumer_failed"
-            fields["consumer"] shouldBe "NL_LEESAH"
-            fields["partition"] shouldBe 3
-            fields["offset"] shouldBe 42
-            event.serialized.contains("private-canary") shouldBe false
+            assertSoftly {
+                fields["event_type"] shouldBe "kafka_consumer_failed"
+                fields["consumer"] shouldBe "NL_LEESAH"
+                fields["partition"] shouldBe 3
+                fields["offset"] shouldBe 42
+                event.serialized.contains("private-canary") shouldBe false
+            }
         }
 
         test("record processing failures name the unavailable upstream reported by the use case") {
@@ -62,9 +64,11 @@ class LeesahNLKafkaConsumerLoggingTest :
             consumer.logConsumerFailure(LeesahRecordProcessingException(3, 42, aaregUnavailable))
 
             val fields = logs.logs.single().fields
-            fields["event_type"] shouldBe "kafka_consumer_failed"
-            fields["upstream"] shouldBe "aareg"
-            fields["failure_stage"] shouldBe "request"
+            assertSoftly {
+                fields["event_type"] shouldBe "kafka_consumer_failed"
+                fields["upstream"] shouldBe "aareg"
+                fields["failure_stage"] shouldBe "request"
+            }
         }
 
         test("fatal errors are rethrown unchanged even when committing processing errors") {
@@ -90,9 +94,6 @@ private fun unusedFulfillBehovFromLeesah() = FulfillNarmestelederbehovFromLeesah
         override suspend fun findOpenFor(employee: Employee): List<NarmestelederbehovId> = error("Unexpected open behov lookup")
 
         override suspend fun markFulfilled(id: NarmestelederbehovId): MarkFulfilledResult = error("Unexpected fulfillment")
-
-        override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult = error("Unexpected dialog status")
     },
     metrics = { error("Unexpected fulfillment metric") },
-    dialog = { error("Unexpected dialog completion") },
 )

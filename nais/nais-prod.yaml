@@ -144,8 +144,8 @@ spec:
       value: https://www.nav.no/arbeidsgiver
     - name: PUBLIC_INGRESS_URL
       value: https://narmesteleder-api.nav.no
-    - name: DIALOGPORTEN_UPDATE_POLLING_DELAY
-      value: "10m"
+    - name: DIALOG_DISPATCH_ENABLED
+      value: "false"
     - name: MAINTENANCE_TASK_DELAY
       value: "1h"
     - name: DAYS_AFTER_TOM_TO_EXPIRE_BEHOVS

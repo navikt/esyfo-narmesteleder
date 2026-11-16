@@ -148,14 +148,14 @@ class DispatchNarmestelederbehovDialogUseCase(
             is EmployeePersonLookupResult.Found -> lookup.person
             EmployeePersonLookupResult.NotFound -> null
             is EmployeePersonLookupResult.Unavailable -> {
-                logger.logEvent(dialogPersonEnrichmentFailed, DialogEventDetails(claim.id.value), upstreamFailure = lookup.failure)
+                logger.logEvent(dialogPersonEnrichmentFailed, claim.id.value.toString(), upstreamFailure = lookup.failure)
                 null
             }
         }
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
-        logger.logEvent(dialogPersonEnrichmentFailed, DialogEventDetails(claim.id.value), cause = e)
+        logger.logEvent(dialogPersonEnrichmentFailed, claim.id.value.toString(), cause = e)
         null
     }
 
@@ -206,6 +206,13 @@ class DispatchNarmestelederbehovDialogUseCase(
             level = Level.WARN,
             message = "Dialog reconciliation did not converge; inspect queue state before replay",
             operation = "reconcile_narmestelederbehov_dialog",
+            fields = mapOf("behov_id" to { it }),
+        )
+        private val dialogPersonEnrichmentFailed = applicationEvent<String>(
+            name = "dialog_person_enrichment_failed",
+            level = Level.WARN,
+            message = "PDL enrichment failed; creating the dialog without person details",
+            upstream = "pdl",
             fields = mapOf("behov_id" to { it }),
         )
         private val dialogDispatchClaimLost = Event<DialogClaimLost>(

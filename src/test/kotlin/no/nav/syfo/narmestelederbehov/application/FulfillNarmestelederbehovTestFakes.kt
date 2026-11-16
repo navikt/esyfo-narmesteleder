@@ -12,8 +12,6 @@ internal class FakeBehovRepository(
     private val effects: MutableList<String> = mutableListOf(),
     private val updateFailure: Throwable? = null,
     private val markResult: MarkFulfilledResult? = null,
-    private val dialogStatusFailure: Throwable? = null,
-    private val dialogStatusResult: MarkDialogCompletedResult = MarkDialogCompletedResult.Marked,
 ) : FulfillNarmestelederbehovRepository {
     override suspend fun findForFulfillment(id: NarmestelederbehovId): Narmestelederbehov? = behov.also { effects += "load" }
 
@@ -21,12 +19,6 @@ internal class FakeBehovRepository(
         effects += "fulfilled"
         updateFailure?.let { throw it }
         return markResult ?: MarkFulfilledResult.Marked(id, UUID.fromString("00000000-0000-0000-0000-000000000002"))
-    }
-
-    override suspend fun markDialogCompleted(id: NarmestelederbehovId): MarkDialogCompletedResult {
-        effects += "dialog-status"
-        dialogStatusFailure?.let { throw it }
-        return dialogStatusResult
     }
 }
 
@@ -43,17 +35,5 @@ internal class FakeRelationEstablisher(
         failure?.let { throw it }
         this.command = command
         return result
-    }
-}
-
-internal class FakeDialog(
-    private val effects: MutableList<String> = mutableListOf(),
-    private val failure: Throwable? = null,
-    private val completion: DialogCompletion = DialogCompletion.Completed,
-) : NarmestelederbehovDialog {
-    override suspend fun complete(dialogId: UUID): DialogCompletion {
-        effects += "dialog"
-        failure?.let { throw it }
-        return completion
     }
 }

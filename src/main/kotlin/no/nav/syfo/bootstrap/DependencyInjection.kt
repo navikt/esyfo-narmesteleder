@@ -39,4 +39,5 @@ internal fun applicationModules(
 private fun coreModule() = module {
     single { ApplicationState() }
     single { Clock.systemDefaultZone() }
+    single<kotlin.time.Clock> { kotlin.time.Clock.System }
 }

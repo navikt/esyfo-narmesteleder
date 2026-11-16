@@ -22,7 +22,7 @@ Each business module under `no.nav.syfo` has the layers it needs: `api`,
 
 | Module | Owns | Does not |
 |---|---|---|
-| `narmestelederbehov` | Need lifecycle (`nl_behov`): create without duplicates, fulfil, expire, query; Dialogporten state and retries; Leesah consumer that creates and fulfils needs | Validate relations or use relation repositories, ports, domain or Kafka models |
+| `narmestelederbehov` | Need lifecycle (`nl_behov`): create without duplicates, fulfil, expire, query; Dialogporten delivery through `dialog_dispatch`; Leesah consumer that creates and fulfils needs | Validate relations or use relation repositories, ports, domain or Kafka models |
 | `narmestelederrelasjon` | Establish, revoke and validate relations; publish relation messages; local register from Leesah and republishing; lookup, search, `HasActiveNarmestelederrelasjon`; `RelationPerson` projection (moving to `person`); employment check against Aareg | |
 | `sykmelding` | Sendt sykmelding: normalize, deduplicate, persist, retention; trigger need creation and revocation through contracts; the stored `kilde` per brudd | Call Dinesykmeldte for other modules (each keeps its own `ActiveSykmeldingLookup` against Dinesykmeldte) |
 | `organisasjonstilgang` | Organization access: Altinn Tilganger, PDP, Ereg hierarchy; returns allow, deny or `Unavailable` | Load behov or relations; the caller owns lookup, authorization order and non-disclosure |

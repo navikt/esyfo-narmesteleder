@@ -5,8 +5,6 @@ import io.ktor.server.application.ApplicationStopPreparing
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import no.nav.syfo.narmestelederbehov.infrastructure.ExpireNarmestelederbehovTask
-import no.nav.syfo.narmestelederbehov.infrastructure.SendDialogTask
-import no.nav.syfo.narmestelederbehov.infrastructure.UpdateDialogTask
 import no.nav.syfo.narmestelederrelasjon.infrastructure.PersonEnrichmentTask
 import no.nav.syfo.platform.observability.logger
 import no.nav.syfo.platform.scheduling.LeaderChange
@@ -18,8 +16,6 @@ import kotlin.getValue
 
 internal fun Application.configureBackgroundTasks() {
     val logger = logger()
-    val sendDialogTask by inject<SendDialogTask>()
-    val updateDialogTask by inject<UpdateDialogTask>()
     val expireNarmestelederbehovTask by inject<ExpireNarmestelederbehovTask>()
     val deleteOldSykmeldingerTask by inject<DeleteOldSykmeldingerTask>()
     val personEnrichmentTask by inject<PersonEnrichmentTask>()
@@ -32,8 +28,6 @@ internal fun Application.configureBackgroundTasks() {
                 logger.info("Promoted to leader — starting background tasks")
                 taskJobs.lock { jobs ->
                     jobs.cancelAndClear()
-                    jobs += launch { sendDialogTask.runTask() }
-                    jobs += launch { updateDialogTask.runTask() }
                     jobs += launch { personEnrichmentTask.runTask() }
                     jobs += launch { expireNarmestelederbehovTask.runTask() }
                     jobs += launch { deleteOldSykmeldingerTask.runTask() }

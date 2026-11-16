@@ -51,8 +51,9 @@ enable it while an old binary can deliver.
    Most candidates never had a CREATE, so take the IDs from the logs between
    V35 and the end of step 1: `behov_id` on `dialog_created_for_closed_behov`,
    and on `dialogporten_dialog_failed` with action `CREATE` unless
-   `upstream_status` is 4xx. Mark those IDs before enabling the worker. The
-   guards skip rows that do not need it, so the statement is safe to rerun:
+   `upstream_status` is 4xx. Mark those IDs before enabling the worker if you
+   can. The guards skip rows that do not need it, so the statement is safe to
+   rerun:
 
    ```sql
    INSERT INTO dialog_dispatch (behov_id, create_started)
@@ -76,6 +77,12 @@ enable it while an old binary can deliver.
    The worker then repeats the CREATE, gets the existing dialog through the
    idempotent key, and closes it. If a failed CREATE never reached
    Dialogporten, the worker creates the dialog and closes it.
+
+   Run the count again after enabling the worker, once it has drained the
+   backlog. A behov that was open at the first count, had a CREATE without a
+   saved dialog ID and closed before the worker reached it, appears only then.
+   Mark it the same way: the statement also returns a row the worker has
+   finished to `READY`.
 4. Inspect the remaining backlog and known ambiguous historical rows using
    approved database access. Do not export identifiers, payloads or names to
    monitoring. There is no automatic CREATE replay for unidentified closed

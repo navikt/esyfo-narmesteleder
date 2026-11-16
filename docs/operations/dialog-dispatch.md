@@ -7,27 +7,31 @@ delivery takes a code change and a deploy.
 ## Alerts
 
 CI validates the rules in `nais/alerts.yaml` with
-`scripts/check-dialog-alerts.sh` and deploys them to prod from `main`. Dev has
-no rules; evaluate the expressions against dev metrics in Prometheus or
-Grafana.
+`scripts/check-dialog-alerts.sh` (locally: Docker and Ruby) and deploys them
+to prod from `main`. Dev has no rules; evaluate the expressions against dev
+metrics in Prometheus or Grafana.
 
 | Alert | Fires when |
 | --- | --- |
 | `DialogDispatchParked` | At least one row has been `PARKED` for five minutes. See [Failures](#failures) and [Replay](#replay). |
 | `DialogDispatchOverdue` | The oldest pending change has been older than five minutes for another five minutes. Age counts from the first unresolved change, so retries cannot hide a stuck behov. |
 | `DialogDispatchWorkerStalled` | No pod has refreshed its queue snapshot for 90 seconds, for five minutes. |
-| `DialogDispatchTelemetryMissing` | No pod has published the worker heartbeat for five minutes: pods are down, the worker never started, or Prometheus is not scraping. |
+| `DialogDispatchTelemetryMissing` | No pod has published the worker heartbeat for about six minutes: pods are down, the worker never started, or Prometheus is not scraping. |
 
 Queue gauges are database snapshots repeated per pod: use `max`, not `sum`,
 for counts. Check the worker log, database access and Dialogporten status
-first.
+first. `syfo_narmesteleder_dialog_dispatch_attempts_total` splits attempts by
+outcome, and the log events `dialog_dispatch_failed` and
+`dialog_dispatch_claim_lost` name the behov ID.
 
 ## Failures
 
 Validation and domain errors from Dialogporten (400/422) park the row until an
 operator corrects the cause. Everything else retries and shows up as queue
 age: 401/403, 404/410, 409/412, 429, server errors, decoding failures and
-unknown outcomes. A 404 alone does not prove an expiry was applied.
+unknown outcomes. The exception is a CREATE conflict on the behov's own
+idempotency key, which counts as the existing dialog. A 404 alone does not
+prove an expiry was applied.
 `last_failure` stores a bounded technical category, not the raw error.
 
 Correct the underlying problem before replay. Do not reset the queue during an
@@ -37,7 +41,8 @@ upstream incident.
 
 Replay selected parked rows using approved database access in a transaction.
 Inspect the target first, and bind the behov UUID through a prepared
-statement.
+statement. Do not copy fødselsnummer, names or payloads into tickets, chat or
+monitoring.
 
 ```sql
 UPDATE dialog_dispatch

@@ -573,6 +573,7 @@ class ExposedDialogDispatchRepositoryTest :
                         scrape shouldContain "syfo_narmesteleder_dialog_dispatch_parked ${if (parked) "1.0" else "0.0"}"
                         scrape shouldContain "syfo_narmesteleder_dialog_dispatch_pending ${if (parked) "0.0" else "1.0"}"
                         scrape shouldContain """syfo_narmesteleder_dialog_dispatch_attempts_total{outcome="${if (parked) "parked" else "retry"}"} 1.0"""
+                        scrape shouldContain "syfo_narmesteleder_dialog_dispatch_observed_timestamp_seconds ${now.epochSecond.toDouble()}"
                     }
                 } finally {
                     registry.close()

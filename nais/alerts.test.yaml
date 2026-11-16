@@ -1,0 +1,121 @@
+rule_files:
+  - alerts.rules.yaml
+evaluation_interval: 1m
+tests:
+  - name: Parked work fires only after five minutes and resolves after correction
+    interval: 1m
+    input_series:
+      - series: syfo_narmesteleder_dialog_dispatch_enabled{namespace="team-esyfo",app="esyfo-narmesteleder",pod="one"}
+        values: 0+0x15
+      - series: syfo_narmesteleder_dialog_dispatch_parked{namespace="team-esyfo",app="esyfo-narmesteleder",pod="one"}
+        values: 1+0x5 0+0x10
+      - series: syfo_narmesteleder_dialog_dispatch_parked{namespace="team-esyfo",app="esyfo-narmesteleder",pod="two"}
+        values: 1+0x5 0+0x10
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: DialogDispatchParked
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: DialogDispatchParked
+        exp_alerts:
+          - exp_labels:
+              namespace: team-esyfo
+              severity: warning
+            exp_annotations:
+              summary: Dialogporten-oppdateringer krever manuell oppfølging
+              consequence: Behov kan ha en dialog som ikke samsvarer med gjeldende tilstand.
+              action: Undersøk valideringsfeilen og korriger årsaken før kontrollert replay.
+              runbook_url: https://github.com/navikt/esyfo-narmesteleder/blob/main/docs/operations/dialog-dispatch.md
+      - eval_time: 7m
+        alertname: DialogDispatchParked
+        exp_alerts: []
+  - name: Queue age ignores idle snapshots and stays old through retries
+    interval: 1m
+    input_series:
+      - series: syfo_narmesteleder_dialog_dispatch_enabled{namespace="team-esyfo",app="esyfo-narmesteleder",pod="one"}
+        values: 0+0x16
+      - series: syfo_narmesteleder_dialog_dispatch_oldest_pending_timestamp_seconds{namespace="team-esyfo",app="esyfo-narmesteleder",pod="one"}
+        values: 60+0x13 0+0x2
+      - series: syfo_narmesteleder_dialog_dispatch_oldest_pending_timestamp_seconds{namespace="team-esyfo",app="esyfo-narmesteleder",pod="two"}
+        values: 0+0x16
+    alert_rule_test:
+      - eval_time: 11m
+        alertname: DialogDispatchOverdue
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: DialogDispatchOverdue
+        exp_alerts:
+          - exp_labels:
+              namespace: team-esyfo
+              severity: warning
+            exp_annotations:
+              summary: Dialogporten-oppdateringer har blitt forsinket
+              consequence: Arbeidsgiver kan se utdaterte eller manglende dialoger.
+              action: Kontroller kø, worker, databasetilgang og Dialogporten før replay.
+              runbook_url: https://github.com/navikt/esyfo-narmesteleder/blob/main/docs/operations/dialog-dispatch.md
+      - eval_time: 14m
+        alertname: DialogDispatchOverdue
+        exp_alerts: []
+  - name: A stalled enabled worker fires and fresh snapshots resolve it
+    interval: 1m
+    input_series:
+      - series: syfo_narmesteleder_dialog_dispatch_enabled{namespace="team-esyfo",app="esyfo-narmesteleder",pod="one"}
+        values: 1+0x16
+      - series: syfo_narmesteleder_dialog_dispatch_observed_timestamp_seconds{namespace="team-esyfo",app="esyfo-narmesteleder",pod="one"}
+        values: 1+0x7 480+60x8
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: DialogDispatchWorkerStalled
+        exp_alerts: []
+      - eval_time: 7m
+        alertname: DialogDispatchWorkerStalled
+        exp_alerts:
+          - exp_labels:
+              namespace: team-esyfo
+              severity: warning
+            exp_annotations:
+              summary: Dialogporten-worker oppdaterer ikke status
+              consequence: Dialogarbeid kan ha stoppet selv om API-et svarer.
+              action: Kontroller worker-logg og databasetilgang. Ikke start gammel prosessering parallelt.
+              runbook_url: https://github.com/navikt/esyfo-narmesteleder/blob/main/docs/operations/dialog-dispatch.md
+      - eval_time: 9m
+        alertname: DialogDispatchWorkerStalled
+        exp_alerts: []
+  - name: An intentional delivery pause does not report a stopped worker
+    interval: 1m
+    input_series:
+      - series: syfo_narmesteleder_dialog_dispatch_enabled{namespace="team-esyfo",app="esyfo-narmesteleder",pod="one"}
+        values: 0+0x15
+      - series: syfo_narmesteleder_dialog_dispatch_observed_timestamp_seconds{namespace="team-esyfo",app="esyfo-narmesteleder",pod="one"}
+        values: 0+0x15
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: DialogDispatchWorkerStalled
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: DialogDispatchTelemetryMissing
+        exp_alerts: []
+  - name: Missing telemetry fires and restored scraping resolves it
+    interval: 1m
+    input_series:
+      - series: syfo_narmesteleder_dialog_dispatch_enabled{namespace="team-esyfo",app="esyfo-narmesteleder",pod="one"}
+        values: 1 stale _ _ _ _ _ _ 1+0x4
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: DialogDispatchTelemetryMissing
+        exp_alerts: []
+      - eval_time: 6m
+        alertname: DialogDispatchTelemetryMissing
+        exp_alerts:
+          - exp_labels:
+              app: esyfo-narmesteleder
+              namespace: team-esyfo
+              severity: warning
+            exp_annotations:
+              summary: Telemetri for Dialogporten-worker mangler
+              consequence: Vi kan ikke bekrefte at dialogarbeidet blir behandlet.
+              action: Kontroller podder, Prometheus-skraping og worker-konfigurasjon.
+              runbook_url: https://github.com/navikt/esyfo-narmesteleder/blob/main/docs/operations/dialog-dispatch.md
+      - eval_time: 9m
+        alertname: DialogDispatchTelemetryMissing
+        exp_alerts: []

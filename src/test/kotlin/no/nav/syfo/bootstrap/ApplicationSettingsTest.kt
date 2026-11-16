@@ -20,10 +20,6 @@ class ApplicationSettingsTest :
             }
         }
 
-        test("the dialog dispatch worker is disabled unless NAIS enables it") {
-            settingsFrom(requiredEnvironment).narmestelederbehov.dialogDispatch.enabled shouldBe false
-        }
-
         test("startup names the missing setting") {
             val failure = shouldThrow<IllegalStateException> { settingsFrom(requiredEnvironment - "PDL_BASE_URL") }
 

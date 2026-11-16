@@ -2,7 +2,6 @@ package no.nav.syfo.bootstrap
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldBeNull
-import io.kotest.matchers.shouldBe
 import io.ktor.server.application.ServerReady
 import io.ktor.server.application.install
 import io.ktor.server.testing.testApplication
@@ -10,7 +9,6 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.withTimeoutOrNull
 import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.ident.PersonalIdentificationNumber
 import no.nav.syfo.narmestelederbehov.DialogDispatchLoopSettings
@@ -23,12 +21,10 @@ import no.nav.syfo.narmestelederbehov.application.FakeWork
 import no.nav.syfo.narmestelederbehov.domain.BehovStatus
 import no.nav.syfo.narmestelederbehov.domain.Employee
 import no.nav.syfo.narmestelederbehov.infrastructure.MicrometerDialogDispatchMetrics
-import no.nav.syfo.platform.observability.METRICS_NS
 import org.koin.dsl.module
 import org.koin.ktor.plugin.Koin
 import java.time.Instant
 import kotlin.time.Clock
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toKotlinInstant
 
@@ -80,7 +76,7 @@ class ConfigureDialogDispatchTest :
                             }
                         )
                     }
-                    configureDialogDispatch(DialogDispatchLoopSettings(enabled = true, interval = 5.seconds))
+                    configureDialogDispatch(DialogDispatchLoopSettings(interval = 5.seconds))
                     monitor.raise(ServerReady, environment)
                 }
                 startApplication()
@@ -88,34 +84,5 @@ class ConfigureDialogDispatchTest :
             }
             withTimeout(5.seconds) { cancelled.await() }
             queue.finishedResult.shouldBeNull()
-        }
-
-        test("a disabled worker still publishes enabled=0 and never polls at server readiness") {
-            val registry = SimpleMeterRegistry()
-            val polled = CompletableDeferred<Unit>()
-            testApplication {
-                application {
-                    install(Koin) {
-                        modules(
-                            module {
-                                single {
-                                    MicrometerDialogDispatchMetrics(
-                                        {
-                                            polled.complete(Unit)
-                                            noStats
-                                        },
-                                        registry,
-                                    )
-                                }
-                            }
-                        )
-                    }
-                    configureDialogDispatch(DialogDispatchLoopSettings(enabled = false, interval = 10.milliseconds))
-                    monitor.raise(ServerReady, environment)
-                }
-                startApplication()
-                withTimeoutOrNull(500.milliseconds) { polled.await() }.shouldBeNull()
-            }
-            registry.get("${METRICS_NS}_dialog_dispatch_enabled").gauge().value() shouldBe 0.0
         }
     })

@@ -1,48 +1,43 @@
-# Dialogporten dispatch: alerts and recovery
+# Dialogporten dispatch: alerts and replay
 
-Dispatch names the delivery component; `reconcile(claim)` converges a claimed
-behov's latest state with Dialogporten. There is one control row per behov,
-not an immutable command per outgoing request.
-
-The claim worker runs on every pod. There is no runtime switch: stopping
+The `dialog-dispatch` worker runs on every pod and reconciles the latest state
+of each claimed behov with Dialogporten. There is no runtime switch: stopping
 delivery takes a code change and a deploy.
 
-Each pod runs one reconciliation at a time: 10 attempts or 20 seconds per run,
-a 20-second per-attempt limit, a 60-second lease and five-second safety margin.
-Waiting/retries consume these budgets. Polling waits five seconds between
-completed runs.
+## Alerts
 
-## Alert response and replay
+CI validates the rules in `nais/alerts.yaml` with
+`scripts/check-dialog-alerts.sh` and deploys them to prod from `main`. Dev has
+no rules; evaluate the expressions against dev metrics in Prometheus or
+Grafana.
 
-Run `sh scripts/check-dialog-alerts.sh` (Docker and Ruby required) to validate
-the rule syntax, firing delays, resolution and missing-telemetry behavior.
-CI runs the same check and then deploys the rules to prod on every build of
-`main`. They are not deployed to dev; evaluate the expressions in
-`nais/alerts.yaml` against dev metrics in Prometheus or Grafana instead.
+| Alert | Fires when |
+| --- | --- |
+| `DialogDispatchParked` | At least one row has been `PARKED` for five minutes. See [Failures](#failures) and [Replay](#replay). |
+| `DialogDispatchOverdue` | The oldest pending change has been older than five minutes for another five minutes. Age counts from the first unresolved change, so retries cannot hide a stuck behov. |
+| `DialogDispatchWorkerStalled` | No pod has refreshed its queue snapshot for 90 seconds, for five minutes. |
+| `DialogDispatchTelemetryMissing` | No pod has published the worker heartbeat for five minutes: pods are down, the worker never started, or Prometheus is not scraping. |
 
-The warning for parked work fires after five minutes. Pending work older than
-five minutes must remain so for another five minutes to alert. Age is measured
-from the first unresolved change, not the most recent retry; backoff cannot
-conceal a stuck behov. Queue gauges are database snapshots repeated per pod:
-use `max`, not `sum`, for counts. The oldest-pending timestamp uses `min`
-over nonzero samples. A stale worker snapshot has a separate warning.
+Queue gauges are database snapshots repeated per pod: use `max`, not `sum`,
+for counts. Check the worker log, database access and Dialogporten status
+first.
 
-Check the worker heartbeat, database access and downstream status first.
-The attempt counters distinguish done, retry and parked. Completion means
-the claimed attempt was handled, not exactly-once remote delivery or an
-acknowledgement of newer revisions.
-Stored failure reasons are bounded technical categories without raw errors.
+## Failures
 
-Validation/domain responses from Dialogporten (400/422) are parked for operator
-correction. Authentication/configuration failures (401/403), not-found/removed
-dialogs (404/410), conflicts (409/412), 429, server errors, decoding failures and
-unknown outcomes remain retryable and visible through queue age. A 404 alone
-does not prove an expiry was applied. Correct the underlying problem before
-replay; do not blindly reset a queue during an upstream incident.
+Validation and domain errors from Dialogporten (400/422) park the row until an
+operator corrects the cause. Everything else retries and shows up as queue
+age: 401/403, 404/410, 409/412, 429, server errors, decoding failures and
+unknown outcomes. A 404 alone does not prove an expiry was applied.
+`last_failure` stores a bounded technical category, not the raw error.
+
+Correct the underlying problem before replay. Do not reset the queue during an
+upstream incident.
+
+## Replay
 
 Replay selected parked rows using approved database access in a transaction.
-Replace the bound UUID through a prepared statement; inspect the target first.
-No new HTTP admin endpoint is introduced.
+Inspect the target first, and bind the behov UUID through a prepared
+statement.
 
 ```sql
 UPDATE dialog_dispatch
@@ -51,46 +46,7 @@ SET status = 'READY', revision = revision + 1,
 WHERE behov_id = ? AND status = 'PARKED' AND claim_token IS NULL;
 ```
 
-Expect exactly one affected row. Preserve `create_started`, intended expiry,
-the original pending timestamp and the stable behov/idempotency identity.
-Observe reconciliation before replaying another group. A concurrent new
-domain revision independently wakes parked work through the repository's
-transactional scheduling call.
-
-## Rollback
-
-Fix forward or revert on `main`, so that the binary and the Nais manifest
-change together. Binaries built before `DIALOG_DISPATCH_ENABLED` was removed
-start the worker only when it is `true`. Do not return to a binary from before
-[#814](https://github.com/navikt/esyfo-narmesteleder/pull/814): it delivers
-without the worker, and its pods would overlap with running workers during the
-rollout.
-Keep the `dialog_dispatch` table and the V33 and V35 migrations. Do not roll
-schema history back or delete claims to force concurrent work.
-
-## External contract and limitations
-
-The public [Dialogporten OpenAPI](https://platform.altinn.no/dialogporten/swagger/v1/swagger.json)
-documents matching-key conflict `DP.CFL-00002` with `dialogId` and
-`idempotentKey`, 400 validation errors, 422 domain errors and revision-conflict
-412. GET exposes `expiresAt`; retries read it before changing the persisted
-expiry. If GET cannot establish an outcome, the worker retries rather than
-inventing success.
-An observed, unapplied intent too close to expiry is replaced before the
-attempt budget and safety margin can make the request invalid.
-
-Claims prevent stale database writes, not stale remote calls. External effects
-are at-least-once. A tracked uncertain CREATE may create a now-obsolete dialog
-and then close it. Historical closed rows without IDs, from delivery before
-the worker, remain a separately tracked investigation; local leader cleanup
-cannot prove upstream closure.
-The sub-30-second target applies to healthy normal load, not backlog recovery.
-
-Local plan checks used PostgreSQL 18.4, one million synthetic behov/control
-rows and 50,000 synthetic relations. Sparse due work, a 10,000-row due backlog
-and a locked first row used the partial due index (approximately 0.03–0.07 ms).
-The active-only queue aggregate used an index-only scan (approximately 0.9 ms).
-Fixed queue-status literals preserve the partial-index plan with generic
-prepared statements; parameterizing these constants had caused a full scan.
-These local timings are query-plan evidence, not production capacity or
-end-to-end latency proof.
+Expect exactly one affected row. Do not change `create_started`, the intended
+expiry, the pending timestamp or the behov ID, which is the idempotency key.
+Watch the row reconcile before replaying the next group. A new change to the
+behov also wakes parked work.

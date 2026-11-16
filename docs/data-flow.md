@@ -120,9 +120,8 @@ All except the first and third are leader-controlled.
 | Every pod, claim/lease | `employment-check` loop | `CheckNarmestelederrelasjonEmploymentUseCase`, see [Revoke](#revoke-a-relation). |
 | Every pod, claim/lease | `dialog-dispatch` loop | `DispatchNarmestelederbehovDialogUseCase` creates, completes or expires dialogs from the latest behov state. |
 
-No feature flag gates these jobs. Claims and leases:
+Claims and leases:
 [ADR-0003](adr/ADR-0003-planlagt-bakgrunnsarbeid-bruker-claim-med-lease.md).
-Dialog delivery alerts and recovery: [runbook](operations/dialog-dispatch.md).
 
 ## Write flows
 

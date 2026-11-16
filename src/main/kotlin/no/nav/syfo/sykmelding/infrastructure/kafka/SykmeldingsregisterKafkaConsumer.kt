@@ -1,5 +1,6 @@
 package no.nav.syfo.sykmelding.infrastructure.kafka
 
+import no.nav.syfo.platform.kafka.BatchMessageHandler
 import no.nav.syfo.platform.kafka.ConsumerRunner
 import no.nav.syfo.platform.kafka.KafkaListener
 import no.nav.syfo.platform.kafka.KafkaSettings
@@ -12,11 +13,12 @@ import java.util.Properties
 
 class SykmeldingsregisterKafkaConsumer(
     consumerFactory: () -> Consumer<String, String?>,
+    handler: BatchMessageHandler<String, String?>,
 ) : KafkaListener {
     private val runner = ConsumerRunner(
         consumerFactory = consumerFactory,
         topics = listOf(SENDT_SYKMELDING_TOPIC),
-        handler = {},
+        handler = handler,
         coroutineName = "sykmeldingsregister",
     )
 

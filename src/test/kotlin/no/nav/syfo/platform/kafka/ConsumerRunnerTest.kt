@@ -318,8 +318,10 @@ class ConsumerRunnerTest :
             val payload = "payload-canary"
             val committed = CountDownLatch(1)
             val consumer = RecordingMockConsumer(committed)
+            val handled = mutableListOf<String?>()
             val sykmeldingsregisterConsumer = SykmeldingsregisterKafkaConsumer(
                 consumerFactory = { consumer },
+                handler = { records -> handled += records.map { it.value() } },
             )
             consumer.scheduleBatch(ConsumerRecord(SENDT_SYKMELDING_TOPIC, 0, 0L, "key", payload))
 
@@ -339,6 +341,7 @@ class ConsumerRunnerTest :
             }
 
             assertSoftly {
+                handled shouldBe listOf(payload)
                 consumer.committedOffsets[partition]?.offset() shouldBe 1L
             }
         }

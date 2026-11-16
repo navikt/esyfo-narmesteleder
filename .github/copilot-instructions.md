@@ -16,7 +16,7 @@ Read a doc only when the task matches, and only the relevant section
 - Running locally, Docker Compose, dev tokens: `docs/development.md`
 - Adding or moving code; modules, ports, errors, transactions: `docs/architecture.md`
 - Changing an endpoint, Kafka consumer/producer or scheduled task: `docs/data-flow.md`
-- Dialogporten delivery, backfill, alerts, replay or rollback: `docs/operations/dialog-dispatch.md`
+- Dialogporten delivery, cutover, alerts, replay or rollback: `docs/operations/dialog-dispatch.md`
 - Adding or changing logs: `docs/logging.md`
 - Changing the Leesah topic payload: `docs/kafka/syfo-narmesteleder-leesah.md` and its schema
 - System-user 403 or Altinn PDP: `docs/system-user-access-diagnostics.md`

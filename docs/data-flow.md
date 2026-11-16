@@ -121,8 +121,8 @@ All except the first and third are leader-controlled.
 | Every pod, claim/lease | `dialog-dispatch` loop | `DispatchNarmestelederbehovDialogUseCase` creates, completes or expires dialogs from the latest behov state. |
 
 The only feature flag is `DIALOG_DISPATCH_ENABLED`, which starts the
-`dialog-dispatch` loop. It is off in dev and prod until the controlled cutover;
-until then no dialogs are delivered. Claims and leases:
+`dialog-dispatch` loop. The Nais manifests set it per environment; where it is
+off, no dialogs are delivered. Claims and leases:
 [ADR-0003](adr/ADR-0003-planlagt-bakgrunnsarbeid-bruker-claim-med-lease.md).
 Cutover, alerts and recovery: [runbook](operations/dialog-dispatch.md).
 

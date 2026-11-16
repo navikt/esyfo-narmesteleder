@@ -4,52 +4,9 @@ Dispatch names the delivery component; `reconcile(claim)` converges a claimed
 behov's latest state with Dialogporten. There is one control row per behov,
 not an immutable command per outgoing request.
 
-The worker is disabled in dev/prod until a controlled cutover.
 `DIALOG_DISPATCH_ENABLED` starts the claim worker on every pod and is the only
-switch for dialog delivery. Do not enable it while an old binary can deliver.
-
-## Backfill (V35)
-
-Flyway migration `V35__backfill_dialog_dispatch.sql` runs once, in the
-migration transaction, when the first binary that contains it starts:
-
-- Cleanup fulfils open behov (`BEHOV_CREATED` or
-  `DIALOGPORTEN_STATUS_SET_REQUIRES_ATTENTION`) that already have an active,
-  non-revoked relation in the same organization, and schedules work for every
-  row it fulfils. Fulfillment is not confirmed dialog completion.
-- Seeding adds work for legacy rows that have none: open behov, fulfilled
-  behov with a dialog, and expired or failed behov whose dialog has not been
-  expired. Closed legacy rows without dialog IDs are deliberately excluded.
-- A row without a dialog ID that is open when V35 runs is marked
-  `create_started`, whether cleanup fulfils it or seeding finds it still open,
-  because the legacy task may have attempted its CREATE. If the behov closes
-  before the worker creates the dialog, the idempotent key returns an existing
-  dialog; otherwise subscribers see a dialog created and then closed. The
-  result does not depend on the statement order.
-
-A migration is safe here because every behov writer has scheduled its own
-changes in the same transaction since V33, so the backfill covers only rows
-last changed before that, and the worker stays disabled until the cutover.
-Before the cutover binary, the legacy tasks keep completing fulfilled behov
-that have a dialog; other scheduled work waits for the worker. A relation
-that the projection has not consumed at deploy time leaves its behov open for
-normal fulfillment.
-If V35 fails, for example as a deadlock victim, Flyway rolls it back in full
-and the pod fails startup; old pods keep serving and the next start retries.
-V35 is not a routine producer or replay command.
-
-After the deploy, confirm that V35 succeeded in `flyway_schema_history` and
-that this read-only count returns zero:
-
-```sql
-SELECT count(*) AS unscheduled
-FROM nl_behov b
-WHERE NOT EXISTS (SELECT 1 FROM dialog_dispatch q WHERE q.behov_id = b.id)
-  AND (b.behov_status = 'BEHOV_CREATED'
-       OR (b.behov_status = 'BEHOV_FULFILLED' AND b.dialog_id IS NOT NULL)
-       OR (b.behov_status IN ('BEHOV_EXPIRED', 'ERROR')
-           AND b.dialog_id IS NOT NULL AND b.expired_in_dialogporten IS NULL));
-```
+switch for dialog delivery. The Nais manifests set it per environment. Do not
+enable it while an old binary can deliver.
 
 ## Cutover
 
@@ -58,9 +15,18 @@ WHERE NOT EXISTS (SELECT 1 FROM dialog_dispatch q WHERE q.behov_id = b.id)
    repository writer's existing transaction; V33 contains no scheduling trigger.
    Wait until every pod uses the new binary and all old requests/jobs have
    drained. The old flag alone does not stop old inline delivery.
-2. Confirm that V35 has been applied and that the unscheduled count in
-   [Backfill (V35)](#backfill-v35) still returns zero. Ensure no older
-   binary can resume processing.
+2. Confirm that this read-only count of unscheduled behov returns zero, and
+   ensure no older binary can resume processing:
+
+   ```sql
+   SELECT count(*) AS unscheduled
+   FROM nl_behov b
+   WHERE NOT EXISTS (SELECT 1 FROM dialog_dispatch q WHERE q.behov_id = b.id)
+     AND (b.behov_status = 'BEHOV_CREATED'
+          OR (b.behov_status = 'BEHOV_FULFILLED' AND b.dialog_id IS NOT NULL)
+          OR (b.behov_status IN ('BEHOV_EXPIRED', 'ERROR')
+              AND b.dialog_id IS NOT NULL AND b.expired_in_dialogporten IS NULL));
+   ```
 3. Inspect the remaining backlog and known ambiguous historical rows using
    approved database access. Do not export identifiers, payloads or names to
    monitoring. There is no automatic CREATE replay for unidentified closed
@@ -153,19 +119,14 @@ Claims prevent stale database writes, not stale remote calls. External effects
 are at-least-once. A tracked uncertain CREATE may create a now-obsolete dialog
 and then close it. Historical closed rows without IDs remain a separately
 tracked investigation; local leader cleanup cannot prove upstream closure.
-V35 marks open rows without a dialog ID only when it runs. A later legacy
-CREATE whose behov closes before the worker creates the dialog is not tracked,
-like other closed rows without dialog IDs.
+They include legacy CREATEs after the V35 backfill whose behov closed before
+the dialog ID was saved.
 The sub-30-second target applies to healthy normal load, not backlog recovery.
 
 Local plan checks used PostgreSQL 18.4, one million synthetic behov/control
 rows and 50,000 synthetic relations. Sparse due work, a 10,000-row due backlog
 and a locked first row used the partial due index (approximately 0.03–0.07 ms).
 The active-only queue aggregate used an index-only scan (approximately 0.9 ms).
-Earlier 500-row cleanup and seeding batches took approximately 60 ms and
-116 ms with the trigger-based scheduler. V35 runs one unbatched pass with
-explicit scheduling, covered by database tests; those timings do not
-establish its duration.
 Fixed queue-status literals preserve the partial-index plan with generic
 prepared statements; parameterizing these constants had caused a full scan.
 These local timings are query-plan evidence, not production capacity or

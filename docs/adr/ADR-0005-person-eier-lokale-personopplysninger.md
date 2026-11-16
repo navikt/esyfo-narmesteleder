@@ -83,8 +83,8 @@ importerer ikke `person` sine tabeller, repositories eller adaptere.
 Skjemaendringer må fortsatt ta hensyn til disse leserne.
 
 Lesestier for behov skal hente navn lokalt uten PDL-kall eller skriving.
-Den claim-baserte Dialogporten-workeren er eneste sted som oppretter dialoger
-for behov, og skal vente på et brukbart navn før den gjør det. Dette innføres
+Den claim-baserte Dialogporten-workeren oppretter dialoger for behov, og skal
+vente på et brukbart navn før den gjør det. Dette innføres
 gradvis i #602; ADR-en alene endrer ikke dagens kjøretid.
 
 ### Sletting følger referansene

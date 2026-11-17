@@ -34,9 +34,7 @@ spec:
             runbook_url: https://github.com/navikt/esyfo-narmesteleder/blob/main/docs/operations/dialog-dispatch.md
         - alert: DialogDispatchWorkerStalled
           expr: |
-            (time() - max(syfo_narmesteleder_dialog_dispatch_observed_timestamp_seconds{namespace="team-esyfo", app="esyfo-narmesteleder"}) > 90)
-            and
-            (max(syfo_narmesteleder_dialog_dispatch_enabled{namespace="team-esyfo", app="esyfo-narmesteleder"}) > 0)
+            time() - max(syfo_narmesteleder_dialog_dispatch_observed_timestamp_seconds{namespace="team-esyfo", app="esyfo-narmesteleder"}) > 90
           for: 5m
           labels:
             namespace: team-esyfo
@@ -44,10 +42,10 @@ spec:
           annotations:
             summary: Dialogporten-worker oppdaterer ikke status
             consequence: Dialogarbeid kan ha stoppet selv om API-et svarer.
-            action: Kontroller worker-logg og databasetilgang. Ikke start gammel prosessering parallelt.
+            action: Kontroller worker-logg og databasetilgang.
             runbook_url: https://github.com/navikt/esyfo-narmesteleder/blob/main/docs/operations/dialog-dispatch.md
         - alert: DialogDispatchTelemetryMissing
-          expr: absent_over_time(syfo_narmesteleder_dialog_dispatch_enabled{namespace="team-esyfo", app="esyfo-narmesteleder"}[5m])
+          expr: absent_over_time(syfo_narmesteleder_dialog_dispatch_observed_timestamp_seconds{namespace="team-esyfo", app="esyfo-narmesteleder"}[5m])
           for: 1m
           labels:
             namespace: team-esyfo
@@ -55,5 +53,5 @@ spec:
           annotations:
             summary: Telemetri for Dialogporten-worker mangler
             consequence: Vi kan ikke bekrefte at dialogarbeidet blir behandlet.
-            action: Kontroller podder, Prometheus-skraping og worker-konfigurasjon.
+            action: Kontroller podder og Prometheus-skraping.
             runbook_url: https://github.com/navikt/esyfo-narmesteleder/blob/main/docs/operations/dialog-dispatch.md

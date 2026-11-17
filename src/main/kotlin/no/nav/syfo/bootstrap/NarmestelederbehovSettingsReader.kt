@@ -6,7 +6,6 @@ import no.nav.syfo.narmestelederbehov.NarmestelederbehovSettings
 import no.nav.syfo.narmestelederbehov.application.NarmestelederbehovExpirySettings
 import no.nav.syfo.narmestelederbehov.infrastructure.dialogporten.DialogportenSettings
 import no.nav.syfo.platform.config.duration
-import no.nav.syfo.platform.config.flag
 import no.nav.syfo.platform.config.long
 import no.nav.syfo.platform.config.string
 
@@ -18,7 +17,6 @@ internal fun ApplicationConfig.narmestelederbehovSettings() = Narmestelederbehov
         frontendBaseUrl = string("narmestelederbehov.dialogporten.frontendBaseUrl"),
     ),
     dialogDispatch = DialogDispatchLoopSettings(
-        enabled = flag("narmestelederbehov.dialogDispatch.enabled"),
         interval = duration("narmestelederbehov.dialogDispatch.interval"),
     ),
 )

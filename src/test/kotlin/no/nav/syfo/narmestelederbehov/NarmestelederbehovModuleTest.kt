@@ -49,7 +49,7 @@ class NarmestelederbehovModuleTest :
                         publicIngressUrl = "https://api.example.invalid",
                         frontendBaseUrl = "https://frontend.example.invalid",
                     ),
-                    dialogDispatch = DialogDispatchLoopSettings(enabled = false, interval = 5.seconds),
+                    dialogDispatch = DialogDispatchLoopSettings(interval = 5.seconds),
                 )
                 val externalDependencies = module {
                     single { ApplicationState() }

@@ -12,8 +12,6 @@ import org.koin.ktor.ext.inject
 
 internal fun Application.configureDialogDispatch(settings: DialogDispatchLoopSettings) {
     val metrics by inject<MicrometerDialogDispatchMetrics>()
-    metrics.enabled(settings.enabled)
-    if (!settings.enabled) return
     val dispatch by inject<DispatchNarmestelederbehovDialogUseCase>()
     val loop = BackgroundLoop(name = "dialog-dispatch", interval = settings.interval) {
         metrics.refresh()

@@ -16,7 +16,7 @@ class MicrometerDialogDispatchMetrics(
     registry: MeterRegistry = METRICS_REGISTRY,
     private val clock: Clock = Clock.systemUTC(),
 ) : DialogDispatchMetrics {
-    private val values = listOf("pending", "parked", "oldest_pending_timestamp_seconds", "observed_timestamp_seconds", "enabled")
+    private val values = listOf("pending", "parked", "oldest_pending_timestamp_seconds", "observed_timestamp_seconds")
         .associateWith { AtomicReference(0.0) }
     private val outcomes = DialogDispatchOutcome.entries.associateWith {
         Counter.builder("${METRICS_NS}_dialog_dispatch_attempts_total").tag("outcome", it.name.lowercase()).register(registry)
@@ -26,10 +26,6 @@ class MicrometerDialogDispatchMetrics(
         values.forEach { (name, value) ->
             Gauge.builder("${METRICS_NS}_dialog_dispatch_$name", value) { it.get() }.register(registry)
         }
-    }
-
-    fun enabled(enabled: Boolean) {
-        values.getValue("enabled").set(if (enabled) 1.0 else 0.0)
     }
 
     override fun record(outcome: DialogDispatchOutcome) = outcomes.getValue(outcome).increment()

@@ -141,7 +141,8 @@ configure provider `skipWhen`. Routes accepting user or system tokens use
 
 ## Configuration and dependency injection
 
-- `main()` reads `application.conf` into `ApplicationSettings` once and calls
+- `main()` reads `application.conf`, overridden by `application-<cluster>.conf`
+  for the NAIS cluster, into `ApplicationSettings` once and calls
   `Application.bootstrap(settings)`. Settings are grouped per owner and read by
   `*SettingsReader.kt` in `bootstrap`; startup fails on the first missing or
   invalid key without logging its value. Capabilities receive only their own
@@ -161,7 +162,7 @@ configure provider `skipWhen`. Routes accepting user or system tokens use
 - Module order matters because routes resolve eagerly: organisasjonstilgang,
   relasjon, behov, statistikk, sykmelding; then consumers and tasks.
 - `DependencyInjectionTest` verifies the full graph and fails on duplicate
-  definitions. `NaisManifestSettingsTest` checks that the manifests resolve.
+  definitions. `ClusterSettingsTest` checks that each cluster resolves.
 
 ## Testing
 

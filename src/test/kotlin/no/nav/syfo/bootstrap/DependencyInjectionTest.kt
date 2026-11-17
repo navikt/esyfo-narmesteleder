@@ -74,7 +74,7 @@ private fun localApplicationModules() = applicationModules(
     leaderElection = localLeaderElectionModule(),
 )
 
-private fun naisApplicationSettings() = settingsFromManifest("nais/nais-prod.yaml")
+private fun naisApplicationSettings() = clusterSettings("prod-gcp", "nais/nais-prod.yaml")
 
 // Registered by each capability's Ktor module with koinModules(), not by applicationModules.
 private fun capabilityDependencies(settings: ApplicationSettings) = listOf(

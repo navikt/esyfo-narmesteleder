@@ -10,6 +10,9 @@ on:
   merge_group:
     types: [checks_requested]
   workflow_dispatch:
+  schedule:
+    - cron: "10 5 * * *"
+      timezone: "Europe/Oslo"
 
 jobs:
   check-dialog-alerts:

@@ -3,6 +3,8 @@ package no.nav.syfo.bootstrap
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.shouldBe
+import no.nav.syfo.platform.config.LoadedApplicationConfig
 import no.nav.syfo.platform.config.applicationConfigWithEnvironment
 import no.nav.syfo.platform.config.configResources
 import org.yaml.snakeyaml.Yaml
@@ -10,6 +12,12 @@ import java.io.File
 
 class ClusterSettingsTest :
     FunSpec({
+        test("MCP is enabled in dev-gcp and local, but not prod-gcp") {
+            clusterSettings("dev-gcp", "nais/nais-dev.yaml").mcp.enabled shouldBe true
+            localApplicationSettings().mcp.enabled shouldBe true
+            clusterSettings("prod-gcp", "nais/nais-prod.yaml").mcp.enabled shouldBe false
+        }
+
         listOf("dev-gcp" to "nais/nais-dev.yaml", "prod-gcp" to "nais/nais-prod.yaml").forEach { (cluster, manifest) ->
             test("$cluster gets every required setting with valid values from its config file and $manifest") {
                 shouldNotThrowAny { clusterSettings(cluster, manifest) }
@@ -22,7 +30,7 @@ class ClusterSettingsTest :
     })
 
 internal fun clusterSettings(cluster: String, manifest: String): ApplicationSettings = ApplicationSettings.from(
-    applicationConfigWithEnvironment(naisEnvironment(cluster, manifest), configResources(cluster)),
+    LoadedApplicationConfig(applicationConfigWithEnvironment(naisEnvironment(cluster, manifest), configResources(cluster)), cluster),
 )
 
 /**

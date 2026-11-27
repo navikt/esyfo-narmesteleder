@@ -17,6 +17,9 @@ class ApplicationConfigLoaderTest :
         }
 
         test("the cluster file overrides application.conf") {
-            loadApplicationConfig("override-test").string("maintenanceTask.interval") shouldBe "from-cluster-file"
+            val loaded = loadApplicationConfig("override-test")
+            loaded.config.string("maintenanceTask.interval") shouldBe "from-cluster-file"
+            loaded.config.string("mcp.cluster") shouldBe "local"
+            loaded.cluster shouldBe "override-test"
         }
     })

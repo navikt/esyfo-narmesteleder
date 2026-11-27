@@ -17,6 +17,7 @@ import no.nav.syfo.narmestelederrelasjon.application.RevocableNarmestelederrelas
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.FakeOrganizationAccess
+import no.nav.syfo.organisasjonstilgang.application.McpActingAs
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.observability.ProductionLogCapture
@@ -122,6 +123,8 @@ class RevokeNarmestelederrelasjonUseCaseTest :
         listOf(
             Triple("an authorized outsider", user(outsider), RevocationInitiator.PERSONNEL_MANAGER),
             Triple("a system user", system, RevocationInitiator.LPS),
+            Triple("MCP acting as LPS", OrganizationAccessSubject.McpDevTool(McpActingAs.LPS), RevocationInitiator.LPS),
+            Triple("MCP acting as personnel manager", OrganizationAccessSubject.McpDevTool(McpActingAs.PERSONNEL_MANAGER), RevocationInitiator.PERSONNEL_MANAGER),
         ).forEach { (subjectName, subject, initiator) ->
             test("$subjectName uses the distinct source $initiator") {
                 val (useCase, effects, commands) = fixture()

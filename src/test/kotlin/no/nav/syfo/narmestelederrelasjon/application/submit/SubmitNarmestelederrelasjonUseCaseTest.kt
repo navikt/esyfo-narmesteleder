@@ -13,6 +13,7 @@ import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.FakeOrganizationAccess
+import no.nav.syfo.organisasjonstilgang.application.McpActingAs
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.upstream.UpstreamFailure
@@ -36,8 +37,13 @@ class SubmitNarmestelederrelasjonUseCaseTest :
             effects shouldBe listOf("access")
         }
 
-        listOf(systemUser to RelationSource.LPS, personnelManager to RelationSource.PERSONNEL_MANAGER).forEach { (subject, source) ->
-            test("normalizes before access and passes the submitted employee last name and source $source to establish") {
+        listOf(
+            systemUser to RelationSource.LPS,
+            personnelManager to RelationSource.PERSONNEL_MANAGER,
+            OrganizationAccessSubject.McpDevTool(McpActingAs.LPS) to RelationSource.LPS,
+            OrganizationAccessSubject.McpDevTool(McpActingAs.PERSONNEL_MANAGER) to RelationSource.PERSONNEL_MANAGER,
+        ).forEach { (subject, source) ->
+            test("${subject::class.simpleName} normalizes before access and passes the submitted employee last name and source $source to establish") {
                 val effects = mutableListOf<String>()
                 var established: EstablishNarmestelederrelasjonCommand? = null
                 val access = FakeOrganizationAccess(organizationNumber, effects = effects)

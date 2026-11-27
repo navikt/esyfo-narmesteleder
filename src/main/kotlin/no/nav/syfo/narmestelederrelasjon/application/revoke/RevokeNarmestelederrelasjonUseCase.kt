@@ -4,6 +4,7 @@ import no.nav.syfo.narmestelederrelasjon.application.NarmestelederrelasjonReposi
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocation
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocationCommand
 import no.nav.syfo.narmestelederrelasjon.application.RevocableNarmestelederrelasjon
+import no.nav.syfo.narmestelederrelasjon.application.revocationInitiator
 import no.nav.syfo.narmestelederrelasjon.application.revoke.RevokeNarmestelederrelasjonResult.NotFound
 import no.nav.syfo.narmestelederrelasjon.application.revoke.RevokeNarmestelederrelasjonResult.Reason
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
@@ -76,6 +77,7 @@ class RevokeNarmestelederrelasjonUseCase(
 
 private fun OrganizationAccessSubject.partyInRelation(relation: RevocableNarmestelederrelasjon): RevocationInitiator? = when (this) {
     is OrganizationAccessSubject.LpsSystemUser -> null
+    is OrganizationAccessSubject.McpDevTool -> null
 
     is OrganizationAccessSubject.PersonnelManager -> when (personIdent) {
         relation.employeeIdent -> RevocationInitiator.EMPLOYEE
@@ -87,6 +89,7 @@ private fun OrganizationAccessSubject.partyInRelation(relation: RevocableNarmest
 private fun OrganizationAccessSubject.employerInitiator(): RevocationInitiator = when (this) {
     is OrganizationAccessSubject.PersonnelManager -> RevocationInitiator.PERSONNEL_MANAGER
     is OrganizationAccessSubject.LpsSystemUser -> RevocationInitiator.LPS
+    is OrganizationAccessSubject.McpDevTool -> actingAs.revocationInitiator()
 }
 
 /** Keeps the legacy rejection_reason values. */

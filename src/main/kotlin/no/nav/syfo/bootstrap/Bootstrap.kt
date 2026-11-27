@@ -18,7 +18,7 @@ fun Application.bootstrap(settings: ApplicationSettings, koinModules: List<Modul
     bindJvmAndProcessMetrics()
     configureLifecycleHooks(get())
     configureLeaderMonitoring(get(), get())
-    organisasjonstilgangModule()
+    organisasjonstilgangModule(settings.mcp.enabled)
     narmestelederrelasjonModule()
     narmestelederbehovModule(settings.narmestelederbehov)
     narmestelederstatistikkModule()

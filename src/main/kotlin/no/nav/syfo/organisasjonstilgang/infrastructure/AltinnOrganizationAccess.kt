@@ -17,11 +17,13 @@ import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.COUNT_HAS
 import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.api.ErrorType
 import no.nav.syfo.platform.auth.UserPrincipal
+import no.nav.syfo.platform.observability.applicationEvent
 import no.nav.syfo.platform.observability.applicationLogger
 import no.nav.syfo.platform.observability.logEvent
 import no.nav.syfo.platform.observability.teamLogsLogger
 import no.nav.syfo.platform.upstream.UpstreamResult
 import no.nav.syfo.platform.upstream.getOrElse
+import org.slf4j.event.Level
 
 class AltinnOrganizationAccess(
     private val altinnTilgangerService: AltinnTilgangerService,
@@ -34,6 +36,10 @@ class AltinnOrganizationAccess(
     ): OrganizationAccessResult = when (subject) {
         is OrganizationAccessSubject.PersonnelManager -> evaluatePersonnelManager(subject, organizationNumber)
         is OrganizationAccessSubject.LpsSystemUser -> evaluateSystemUser(subject, organizationNumber)
+        is OrganizationAccessSubject.McpDevTool -> {
+            logger.logEvent(mcpDevToolDenied, Unit)
+            OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS)
+        }
     }
 
     companion object {
@@ -123,3 +129,10 @@ class AltinnOrganizationAccess(
         }
     }
 }
+
+internal val mcpDevToolDenied = applicationEvent<Unit>(
+    name = "mcp_dev_tool_access_denied",
+    level = Level.ERROR,
+    message = "MCP dev tool reached the Altinn organization access adapter",
+    operation = "evaluate_organization_access",
+)

@@ -5,6 +5,7 @@ import no.nav.syfo.narmestelederbehov.domain.NarmestelederbehovId
 import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjonCommand
 import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjonResult
+import no.nav.syfo.narmestelederrelasjon.application.relationSource
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactNormalization
 import no.nav.syfo.narmestelederrelasjon.domain.NormalizedManagerContact
@@ -116,4 +117,5 @@ private typealias FulfillStep<T> = Step<T, FulfillNarmestelederbehovResult>
 private fun OrganizationAccessSubject.relationSource(): RelationSource = when (this) {
     is OrganizationAccessSubject.LpsSystemUser -> RelationSource.LPS
     is OrganizationAccessSubject.PersonnelManager -> RelationSource.PERSONNEL_MANAGER
+    is OrganizationAccessSubject.McpDevTool -> actingAs.relationSource()
 }

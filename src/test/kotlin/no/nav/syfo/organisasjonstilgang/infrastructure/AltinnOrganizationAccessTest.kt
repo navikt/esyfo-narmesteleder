@@ -25,15 +25,19 @@ import no.nav.syfo.integration.ereg.Organisasjon
 import no.nav.syfo.integration.ereg.RecordingEregClient
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
+import no.nav.syfo.organisasjonstilgang.application.McpActingAs
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AltinnAuthorizationClient
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.AuthorizationDecision
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinnauthorization.User
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerClient
+import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerResponse
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.AltinnTilgangerService
 import no.nav.syfo.organisasjonstilgang.infrastructure.altinntilganger.FakeAltinnTilgangerClient
 import no.nav.syfo.platform.api.ApiErrorException
 import no.nav.syfo.platform.api.ErrorType
+import no.nav.syfo.platform.auth.UserPrincipal
 import no.nav.syfo.platform.observability.ProductionLogCapture
 import no.nav.syfo.platform.observability.ProductionLogs
 import no.nav.syfo.platform.upstream.UpstreamError
@@ -48,6 +52,7 @@ class AltinnOrganizationAccessTest :
         val mapper = jacksonObjectMapper()
         val contract = RuntimeLogContract.forEvents(
             systemUserAccessRejected,
+            mcpDevToolDenied,
             rejectionReasons = setOf(SYSTEM_USER_ACCESS_NOT_GRANTED),
         )
         val productionLogs = extension(ProductionLogs(AltinnOrganizationAccess::class.java))
@@ -65,6 +70,21 @@ class AltinnOrganizationAccessTest :
         afterTest {
             capture.use { capture ->
                 capture.records.forEach { line -> privacyCanaries.forEach { line shouldNotContain it } }
+            }
+        }
+
+        McpActingAs.entries.forEach { actingAs ->
+            test("denies MCP acting as $actingAs without calling Altinn or Ereg") {
+                val fixture = AccessFixture()
+                fixture.access.evaluate(OrganizationAccessSubject.McpDevTool(actingAs), OrganizationNumber(REQUESTED_ORG)) shouldBe
+                    OrganizationAccessResult.Denied(DenialReason.MISSING_ORGANIZATION_ACCESS)
+                fixture.altinnRequests shouldBe 0
+                fixture.pdp.requestedOrganizations.shouldBeEmpty()
+                fixture.eregRequests shouldBe 0
+                contract.assertValid(capture.records, expectedCount = 1)
+                val event = mapper.readTree(capture.records.single())
+                event["event_type"].asText() shouldBe "mcp_dev_tool_access_denied"
+                event["level"].asText() shouldBe "ERROR"
             }
         }
 
@@ -269,6 +289,7 @@ private fun JsonNode.shouldBeRejection(directDecision: String, fallbackDecision:
 
 private class AccessFixture {
     val altinn = FakeAltinnTilgangerClient().also { it.accessPolicy.clear() }
+    var altinnRequests = 0
     val pdp = RecordingAltinnAuthorizationClient()
     val ereg = FakeEregClient().also { it.organisasjoner.clear() }
     private val recordingEreg = RecordingEregClient { ereg.getOrganisasjon(it) }
@@ -278,7 +299,12 @@ private class AccessFixture {
         every { putOrganisasjon(any(), any()) } just runs
     }
     val access = AltinnOrganizationAccess(
-        AltinnTilgangerService(altinn),
+        AltinnTilgangerService(object : AltinnTilgangerClient {
+            override suspend fun fetchAltinnTilganger(bruker: UserPrincipal): UpstreamResult<AltinnTilgangerResponse> {
+                altinnRequests++
+                return altinn.fetchAltinnTilganger(bruker)
+            }
+        }),
         pdp,
         CachedEregClient(recordingEreg, eregCache),
     )

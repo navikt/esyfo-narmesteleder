@@ -1,6 +1,5 @@
 package no.nav.syfo.platform.auth.texas
 
-import no.nav.syfo.bootstrap.ApplicationSettings
-import no.nav.syfo.platform.config.localApplicationConfig
+import no.nav.syfo.bootstrap.localApplicationSettings
 
-fun localTexasSettings(): TexasSettings = ApplicationSettings.from(localApplicationConfig()).texas
+fun localTexasSettings(): TexasSettings = localApplicationSettings().texas

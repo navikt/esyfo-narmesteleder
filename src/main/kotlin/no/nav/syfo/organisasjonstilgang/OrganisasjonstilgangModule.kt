@@ -9,8 +9,8 @@ import no.nav.syfo.platform.auth.texas.authenticateMaskinportenOrTokenX
 import org.koin.ktor.ext.get
 import org.koin.ktor.plugin.koinModules
 
-fun Application.organisasjonstilgangModule() {
-    koinModules(organisasjonstilgangDependencies())
+fun Application.organisasjonstilgangModule(mcpEnabled: Boolean) {
+    koinModules(organisasjonstilgangDependencies(mcpEnabled))
     val listAccessibleOrganizations = get<ListAccessibleOrganizationsUseCase>()
     routing {
         apiV1 {

@@ -18,6 +18,7 @@ import no.nav.syfo.narmestelederrelasjon.domain.RegisteredName
 import no.nav.syfo.organisasjonstilgang.application.AccessToken
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.FakeOrganizationAccess
+import no.nav.syfo.organisasjonstilgang.application.McpActingAs
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
@@ -83,8 +84,10 @@ class RevokeActiveNarmestelederrelasjonUseCaseTest :
             lps to RevocationInitiator.LPS,
             OrganizationAccessSubject.PersonnelManager(resolved, AccessToken("test")) to RevocationInitiator.EMPLOYEE,
             OrganizationAccessSubject.PersonnelManager(employee, AccessToken("test")) to RevocationInitiator.PERSONNEL_MANAGER,
+            OrganizationAccessSubject.McpDevTool(McpActingAs.LPS) to RevocationInitiator.LPS,
+            OrganizationAccessSubject.McpDevTool(McpActingAs.PERSONNEL_MANAGER) to RevocationInitiator.PERSONNEL_MANAGER,
         ).forEach { (subject, initiator) ->
-            test("a revocation by $initiator uses the resolved ident and the expected Kafka initiator") {
+            test("a ${subject::class.simpleName} revocation by $initiator uses the resolved ident and the expected Kafka initiator") {
                 val fixture = RevokeActiveFixture()
                 fixture.execute(subject) shouldBe RevokeActiveNarmestelederrelasjonResult.Revoked(initiator)
                 fixture.calls shouldBe listOf("access", "person", "name", "active", "publish")

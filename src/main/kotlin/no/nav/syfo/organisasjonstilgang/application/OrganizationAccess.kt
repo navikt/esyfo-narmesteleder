@@ -21,6 +21,13 @@ sealed interface OrganizationAccessSubject {
         val systemUserId: String,
         val systemUserOrganizationNumber: OrganizationNumber,
     ) : OrganizationAccessSubject
+
+    data class McpDevTool(val actingAs: McpActingAs) : OrganizationAccessSubject
+}
+
+enum class McpActingAs {
+    LPS,
+    PERSONNEL_MANAGER,
 }
 
 class AccessToken(private val value: String) {
@@ -36,7 +43,7 @@ class AccessToken(private val value: String) {
 sealed interface OrganizationAccessResult {
     /**
      * [organizationName] is the name of the requested organization as registered in Altinn.
-     * It is only known when a personnel manager is granted access; null for system users.
+     * It is only known when a personnel manager is granted access; null for system users and the dev tool.
      */
     data class Granted(val organizationName: String?) : OrganizationAccessResult
     data class Denied(val reason: DenialReason) : OrganizationAccessResult

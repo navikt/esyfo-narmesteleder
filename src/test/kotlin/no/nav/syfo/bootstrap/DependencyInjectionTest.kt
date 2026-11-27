@@ -5,11 +5,15 @@ import io.kotest.inspectors.forAll
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotStartWith
 import io.kotest.matchers.string.shouldStartWith
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.ktor.client.engine.HttpClientEngine
 import no.nav.syfo.integration.ereg.CachedEregClient
 import no.nav.syfo.narmestelederbehov.narmestelederbehovDependencies
 import no.nav.syfo.narmestelederrelasjon.narmestelederrelasjonDependencies
 import no.nav.syfo.narmestelederstatistikk.narmestelederstatistikkDependencies
+import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
+import no.nav.syfo.organisasjonstilgang.infrastructure.AltinnOrganizationAccess
+import no.nav.syfo.organisasjonstilgang.infrastructure.McpDevOrganizationAccess
 import no.nav.syfo.organisasjonstilgang.organisasjonstilgangDependencies
 import no.nav.syfo.platform.auth.texas.TexasSettings
 import no.nav.syfo.platform.cache.ValkeySettings
@@ -53,6 +57,32 @@ class DependencyInjectionTest :
             localTypes shouldBe replaceableTypes()
         }
 
+        test("MCP decorator is resolved only in the local graph") {
+            val settings = localApplicationSettings()
+            val application = koinApplication {
+                allowOverride(false)
+                modules(localApplicationModules() + capabilityDependencies(settings))
+            }
+            try {
+                application.koin.get<OrganizationAccess>().shouldBeInstanceOf<McpDevOrganizationAccess>()
+            } finally {
+                application.close()
+            }
+        }
+
+        test("production graph resolves the real Altinn adapter") {
+            val settings = naisApplicationSettings()
+            val application = koinApplication {
+                allowOverride(false)
+                modules(applicationModules(settings) + capabilityDependencies(settings))
+            }
+            try {
+                application.koin.get<OrganizationAccess>().shouldBeInstanceOf<AltinnOrganizationAccess>()
+            } finally {
+                application.close()
+            }
+        }
+
         test("production registers only real external clients and leader election") {
             replaceableImplementations(applicationModules(naisApplicationSettings())).forAll {
                 it.simpleName shouldNotStartWith "Fake"
@@ -78,7 +108,7 @@ private fun naisApplicationSettings() = clusterSettings("prod-gcp", "nais/nais-p
 
 // Registered by each capability's Ktor module with koinModules(), not by applicationModules.
 private fun capabilityDependencies(settings: ApplicationSettings) = listOf(
-    organisasjonstilgangDependencies(),
+    organisasjonstilgangDependencies(settings.mcp.enabled),
     narmestelederrelasjonDependencies(),
     narmestelederbehovDependencies(settings.narmestelederbehov),
     narmestelederstatistikkDependencies(),

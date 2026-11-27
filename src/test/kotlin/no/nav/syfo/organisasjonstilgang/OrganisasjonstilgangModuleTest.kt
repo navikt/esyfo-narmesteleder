@@ -32,7 +32,7 @@ class OrganisasjonstilgangModuleTest :
             testApplication {
                 application {
                     platformModule(listOf(externalDependencies))
-                    organisasjonstilgangModule()
+                    organisasjonstilgangModule(mcpEnabled = false)
                 }
 
                 // Missing tokens are rejected before clients or repositories are used.

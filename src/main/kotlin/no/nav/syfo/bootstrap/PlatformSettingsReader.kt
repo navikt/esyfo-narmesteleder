@@ -5,6 +5,7 @@ import no.nav.syfo.platform.auth.texas.TexasSettings
 import no.nav.syfo.platform.auth.texas.altinn.AltinnApiSettings
 import no.nav.syfo.platform.auth.texas.altinnTilgangerExchangeTarget
 import no.nav.syfo.platform.cache.ValkeySettings
+import no.nav.syfo.platform.config.McpSettings
 import no.nav.syfo.platform.config.duration
 import no.nav.syfo.platform.config.flag
 import no.nav.syfo.platform.config.int
@@ -16,6 +17,16 @@ import no.nav.syfo.platform.kafka.KafkaSecurity
 import no.nav.syfo.platform.kafka.KafkaSettings
 import no.nav.syfo.platform.kafka.SchemaRegistryAuth
 import no.nav.syfo.platform.scheduling.LeaderElectionSettings
+
+internal fun ApplicationConfig.mcpSettings(cluster: String?): McpSettings {
+    val enabled = flag("mcp.enabled")
+    if (enabled) {
+        check(cluster in setOf("dev-gcp", "local")) {
+            "Invalid configuration: mcp.enabled is only allowed in dev-gcp and local"
+        }
+    }
+    return McpSettings(enabled)
+}
 
 internal fun ApplicationConfig.databaseSettings() = DatabaseSettings(
     host = string("database.host"),

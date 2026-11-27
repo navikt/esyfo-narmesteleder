@@ -28,6 +28,7 @@ import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactValidationReason
 import no.nav.syfo.narmestelederrelasjon.domain.RelationSource
 import no.nav.syfo.organisasjonstilgang.application.DenialReason
 import no.nav.syfo.organisasjonstilgang.application.FakeOrganizationAccess
+import no.nav.syfo.organisasjonstilgang.application.McpActingAs
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessResult
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccessSubject
 import no.nav.syfo.platform.observability.ProductionLogCapture
@@ -157,6 +158,19 @@ class FulfillNarmestelederbehovUseCaseTest :
                 established.source shouldBe RelationSource.PERSONNEL_MANAGER
             }
             checkCompletedEvent("PERSONNEL_MANAGER", "PENDING")
+        }
+
+        listOf(
+            McpActingAs.LPS to RelationSource.LPS,
+            McpActingAs.PERSONNEL_MANAGER to RelationSource.PERSONNEL_MANAGER,
+        ).forEach { (actingAs, source) ->
+            test("MCP acting as $actingAs fulfills with source $source") {
+                val relation = FakeRelationEstablisher()
+                val subject = OrganizationAccessSubject.McpDevTool(actingAs)
+                createUseCase(relation = relation).execute(command(accessSubject = subject)) shouldBe fulfilledResult(relationSource = source)
+                requireNotNull(relation.command).source shouldBe source
+                checkCompletedEvent(source.name, "PENDING")
+            }
         }
 
         test("returns combined invalid contact issues without loading the behov and logs only bounded issues") {

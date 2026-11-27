@@ -7,6 +7,7 @@ import no.nav.syfo.narmestelederrelasjon.application.PersonLookup
 import no.nav.syfo.narmestelederrelasjon.application.PersonLookupResult
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocation
 import no.nav.syfo.narmestelederrelasjon.application.PublishNarmestelederrelasjonRevocationCommand
+import no.nav.syfo.narmestelederrelasjon.application.revocationInitiator
 import no.nav.syfo.narmestelederrelasjon.domain.LastNameMatch
 import no.nav.syfo.narmestelederrelasjon.domain.matchLastName
 import no.nav.syfo.organisasjonstilgang.application.OrganizationAccess
@@ -31,6 +32,7 @@ class RevokeActiveNarmestelederrelasjonUseCase(
         }
         val initiator = when (val subject = command.accessSubject) {
             is OrganizationAccessSubject.LpsSystemUser -> RevocationInitiator.LPS
+            is OrganizationAccessSubject.McpDevTool -> subject.actingAs.revocationInitiator()
 
             is OrganizationAccessSubject.PersonnelManager ->
                 if (subject.personIdent == employee.personIdent) RevocationInitiator.EMPLOYEE else RevocationInitiator.PERSONNEL_MANAGER

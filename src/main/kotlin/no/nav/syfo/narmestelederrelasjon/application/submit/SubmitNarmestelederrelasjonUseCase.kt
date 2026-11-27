@@ -4,6 +4,7 @@ import no.nav.syfo.ident.OrganizationNumber
 import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjon
 import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjonCommand
 import no.nav.syfo.narmestelederrelasjon.application.establish.EstablishNarmestelederrelasjonResult
+import no.nav.syfo.narmestelederrelasjon.application.relationSource
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactInput
 import no.nav.syfo.narmestelederrelasjon.domain.ManagerContactNormalization
 import no.nav.syfo.narmestelederrelasjon.domain.NormalizedManagerContact
@@ -27,6 +28,7 @@ class SubmitNarmestelederrelasjonUseCase(
         val source = when (command.accessSubject) {
             is OrganizationAccessSubject.LpsSystemUser -> RelationSource.LPS
             is OrganizationAccessSubject.PersonnelManager -> RelationSource.PERSONNEL_MANAGER
+            is OrganizationAccessSubject.McpDevTool -> command.accessSubject.actingAs.relationSource()
         }
         return when (
             val result = establishRelation.execute(

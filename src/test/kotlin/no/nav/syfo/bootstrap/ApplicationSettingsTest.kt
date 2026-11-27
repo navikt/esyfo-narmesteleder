@@ -5,6 +5,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
+import no.nav.syfo.platform.config.LoadedApplicationConfig
 import no.nav.syfo.platform.config.applicationConfigWithEnvironment
 import no.nav.syfo.platform.config.configResources
 import no.nav.syfo.platform.database.DatabaseSecurity
@@ -15,6 +16,35 @@ import no.nav.syfo.platform.kafka.SchemaRegistryAuth
 
 class ApplicationSettingsTest :
     FunSpec({
+        test("MCP is disabled in production") {
+            settingsFrom(requiredEnvironment).mcp.enabled shouldBe false
+            settingsFrom(requiredEnvironment + ("MCP_ENABLED" to "true")).mcp.enabled shouldBe false
+        }
+
+        test("startup rejects enabled MCP when the cluster is missing") {
+            val failure = shouldThrow<IllegalStateException> {
+                settingsFrom(requiredEnvironment - "NAIS_CLUSTER_NAME", mapOf("mcp.enabled" to "true"))
+            }
+            failure.message shouldBe "Invalid configuration: mcp.enabled is only allowed in dev-gcp and local"
+        }
+
+        test("a config override cannot disguise production as local when MCP is enabled") {
+            val failure = shouldThrow<IllegalStateException> {
+                settingsFrom(requiredEnvironment, mapOf("mcp.enabled" to "true", "mcp.cluster" to "local"))
+            }
+            failure.message shouldBe "Invalid configuration: mcp.enabled is only allowed in dev-gcp and local"
+        }
+
+        listOf("prod-gcp", "unknown-cluster").forEach { cluster ->
+            test("startup rejects MCP in $cluster without exposing config values") {
+                val failure = shouldThrow<IllegalStateException> {
+                    settingsFrom(requiredEnvironment + ("NAIS_CLUSTER_NAME" to cluster), mapOf("mcp.enabled" to "true"))
+                }
+                failure.message shouldBe "Invalid configuration: mcp.enabled is only allowed in dev-gcp and local"
+                failure.message.orEmpty() shouldNotContain cluster
+            }
+        }
+
         test("Kafka commits on errors are disabled unless NAIS enables them") {
             assertSoftly(settingsFrom(requiredEnvironment)) {
                 kafka.commitOnAllErrors shouldBe false
@@ -127,5 +157,5 @@ private val requiredEnvironment = mapOf(
 )
 
 private fun settingsFrom(environment: Map<String, String>, overrides: Map<String, String> = emptyMap()) = ApplicationSettings.from(
-    applicationConfigWithEnvironment(environment, configResources(CLUSTER), overrides),
+    LoadedApplicationConfig(applicationConfigWithEnvironment(environment, configResources(CLUSTER), overrides), environment["NAIS_CLUSTER_NAME"]),
 )
